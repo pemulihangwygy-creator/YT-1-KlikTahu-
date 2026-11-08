@@ -163,7 +163,7 @@ def main():
     ap.add_argument("--stills", action="store_true")
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--fps", type=int, default=S.FPS)
-    ap.add_argument("--crf", type=int, default=18)
+    ap.add_argument("--crf", type=int, default=21)
     ap.add_argument("--preset", default="medium")
     ap.add_argument("--only-video", action="store_true")
     args = ap.parse_args()
