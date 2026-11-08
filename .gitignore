@@ -1,13 +1,7 @@
-# Unduhan dari Google Drive (bahan baku, bukan milik repo)
 /google_drive/
-
-# Artefak kerja / pratinjau analisis / hasil render antara
 /analysis/
 /build/
 .venv/
 __pycache__/
 *.pyc
 *.log
-
-# Catatan: berkas di output/, reference/, assets/vo/ dan assets/fonts/
-# sengaja disimpan di repo karena merupakan deliverable + bahan reproduksi.
