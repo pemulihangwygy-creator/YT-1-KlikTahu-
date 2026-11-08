@@ -1,0 +1,12 @@
+# Unduhan dari Google Drive (bahan baku, bukan milik repo)
+/google_drive/
+
+# Artefak kerja / pratinjau analisis
+/analysis/
+/build/
+.venv/
+__pycache__/
+*.pyc
+*.log
+
+# File final sengaja disimpan di repo (lihat ! di bawah)

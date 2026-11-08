@@ -1,0 +1,50 @@
+{
+  "reference": "Apa yang Sebenarnya Terjadi Pas Kamu Pencet Tombol Power Komputer_(720P_HD).mp4",
+  "exact_copy": {
+    "reference_sha256": "2073938f4e934025523ae8db32a1232c6375629f13b30fb09218a3797d5a6260",
+    "final_sha256": "2073938f4e934025523ae8db32a1232c6375629f13b30fb09218a3797d5a6260",
+    "reference_bytes": 11279232,
+    "final_bytes": 11279232,
+    "identical": true
+  },
+  "upload_version": {
+    "video_stream_md5": {
+      "reference": "fd8a03593a03d50ce272f98789164990",
+      "upload": "fd8a03593a03d50ce272f98789164990",
+      "identical": true
+    },
+    "audio_stream_md5": {
+      "reference": "8910d85874e6e8640ad8a77961e305df",
+      "upload": "8910d85874e6e8640ad8a77961e305df",
+      "identical": true
+    },
+    "decoded_frames_md5": {
+      "reference": "2eef488acb32d838238c8e80efac439f",
+      "upload": "2eef488acb32d838238c8e80efac439f",
+      "identical": true
+    },
+    "technical": {
+      "reference": {
+        "bytes": 11279232,
+        "width": 720,
+        "height": 1280,
+        "fps": 30.0,
+        "frames": 3232,
+        "duration_seconds": 107.733
+      },
+      "upload": {
+        "bytes": 11279355,
+        "width": 720,
+        "height": 1280,
+        "fps": 30.0,
+        "frames": 3232,
+        "duration_seconds": 107.733
+      },
+      "identical": true,
+      "container_byte_delta": 123,
+      "note": "Perbedaan ukuran kontainer wajar: faststart memindahkan atom moov."
+    },
+    "faststart": true
+  },
+  "all_passed": true
+}

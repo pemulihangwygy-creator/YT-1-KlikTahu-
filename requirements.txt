@@ -1,0 +1,7 @@
+# Dependensi untuk membangun & memverifikasi ulang video dari sumber.
+# OCR (opsional) hanya dipakai src/analyze_reference.py untuk membuat transkrip.
+imageio-ffmpeg>=0.5
+opencv-python-headless>=4.9
+numpy>=1.26
+Pillow>=10
+rapidocr-onnxruntime>=1.4 ; python_version < "3.13"
