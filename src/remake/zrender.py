@@ -15,6 +15,9 @@ import cv2
 import numpy as np
 
 import geom3d as G
+import ssao
+
+USE_SSAO = True          # SSAO Numba (normal rekonstruksi + 16 sampel hemisfer)
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "remake" / "raster.c"
@@ -30,7 +33,7 @@ _BG = {}
 def _lib():
     if not LIB.exists():
         LIB.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["gcc", "-O3", "-ffast-math", "-shared", "-fPIC",
+        subprocess.run(["gcc", "-O3", "-march=native", "-ffast-math", "-shared", "-fPIC",
                         "-o", str(LIB), str(SRC), "-lm"], check=True)
     lib = ctypes.CDLL(str(LIB))
     lib.raster.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int] + [ctypes.c_void_p] * 8
@@ -190,7 +193,13 @@ def render(scene, cam, W, H, ss=1.0, zbuf=None):
         _LIB.raster(RW, RH, n, vx.ctypes.data, vy.ctypes.data, viz.ctypes.data,
                     vc.ctypes.data, va.ctypes.data, vb.ctypes.data,
                     zbuf.ctypes.data, rgb.ctypes.data)
-    _LIB.post(RW, RH, zbuf.ctypes.data, rgb.ctypes.data)
+    ao_map = None
+    if USE_SSAO:
+        ao_map = ssao.compute(zbuf, RW, RH, cam.fov)
+    else:
+        _LIB.post(RW, RH, zbuf.ctypes.data, rgb.ctypes.data)
     if ss != 1.0:
         rgb = cv2.resize(rgb, (W, H), interpolation=cv2.INTER_AREA)
-    return rgb
+    if ao_map is not None:
+        rgb = ssao.apply(rgb, ao_map, W, H)
+    return np.ascontiguousarray(rgb)

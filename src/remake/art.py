@@ -133,7 +133,7 @@ def chip_bar(d, step, accent, extra_done=()):
 
 def title_block(d, seg, p):
     accent = C(seg["accent"])
-    a = int(230 * min(1.0, p / 0.10))
+    a = 255
     txt(d, (60, 84), seg["eyebrow"], 26, rgba(accent, a), "Bold")
     txt(d, (60, 132), seg["title"][0], 62, rgba(C("white"), a), "ExtraBold", stroke=2)
     txt(d, (60, 208), seg["title"][1], 62, rgba(UI["yellow"], a), "ExtraBold", stroke=2)
@@ -275,5 +275,5 @@ def outro_cta(d, p, accent):
         rgba(C("white"), int(255 * a)), "ExtraBold", anchor="mm", stroke=2)
     txt(d, (W / 2 / SC, (y + q(180)) / SC), "Tahu hal yang kamu pakai tiap hari", 34,
         rgba(C("muted"), int(245 * a)), "Medium", anchor="mm")
-    txt(d, (W / 2 / SC, (y + q(244)) / SC), "TOMBOL POWER  ·  EP. 01", 26,
+    txt(d, (W / 2 / SC, (y + q(244)) / SC), "TOMBOL POWER  ·  KLIKTAHU", 26,
         rgba(accent, int(235 * a)), "Bold", anchor="mm")

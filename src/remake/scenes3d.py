@@ -37,6 +37,9 @@ MAT = {
     "smd":      M((22, 26, 30), 0.28, 22),
     "rubber":   M((18, 21, 27), 0.22, 18),
     "led_blue": M((56, 148, 255), 0.15, 30, emissive=0.88),
+    "silver2":  M((176, 188, 204), 0.92, 58, edge=0.26),
+    "navy":     M((30, 46, 72), 0.35, 30),
+    "cream":    M((214, 218, 208), 0.22, 22, emissive=0.12),
 }
 ACCENT = {"cyan": (70, 208, 244), "yellow": (255, 199, 32), "green": (58, 222, 142),
           "blue": (70, 138, 255), "amber": (255, 166, 56)}
@@ -58,6 +61,26 @@ def ease(x):
 def smooth(x):
     x = clamp(x)
     return x * x * (3 - 2 * x)
+
+
+YAW = (0.0, 0.13, -0.09, 0.03)
+PITCH = (0.0, -0.05, 0.05, 0.0)
+DIST = (0.0, -0.30, 0.18, -0.08)
+
+
+def beat(u, keys):
+    """Tiga komposisi kamera per bab, transisi halus (bukan potongan kasar)."""
+    p = u * 3.0
+    i = min(2, int(p))
+    f = p - i
+    return keys[i] + (keys[i + 1] - keys[i]) * smooth(f)
+
+
+def screw(s, c, axis, r=0.032):
+    a = norm(axis)
+    c = np.asarray(c, np.float32)
+    s.add(cyl(c, a, r, r * 0.45, n=12), MAT["chrome"])
+    s.add(cyl(c + a * (r * 0.24), a, r * 0.52, r * 0.08, n=12), MAT["alu_dark"])
 
 
 def studio(s, cx=0.0, cz=0.0, rx=1.8, rz=1.4):
@@ -163,6 +186,38 @@ def add_tower(s, phase, led, press=0.0):
     add_fan(s, (-0.283, 1.52, 0.20), (1, 0, 0), 0.125, phase * 1.3, blades=7)
     s.add(box((-0.24, 0.98, 0.05), (0.48, 0.13, 1.12)), MAT["alu_dark"])
     s.add(box((-0.24, 0.908, 0.05), (0.44, 0.014, 1.04)), MAT["gold"])
+    # VRM, chipset, konektor ATX, slot PCIe, M.2, I/O belakang, ventilasi shroud
+    for i in range(11):
+        s.add(box((-0.420, 1.80, -0.62 + i * 0.075), (0.050, 0.17, 0.030)), MAT["alu_dark"])
+    s.add(box((-0.420, 1.80, -0.19), (0.052, 0.035, 0.86)), MAT["silver2"])
+    s.add(box((-0.420, 0.90, 0.40), (0.055, 0.22, 0.26)), MAT["alu_dark"])
+    for i in range(7):
+        s.add(box((-0.388, 0.90, 0.29 + i * 0.036), (0.012, 0.20, 0.012)), MAT["chrome"])
+    s.add(box((-0.420, 1.06, -0.62), (0.060, 0.11, 0.34)), MAT["black"])
+    for i in range(9):
+        s.add(box((-0.386, 1.06, -0.75 + i * 0.037), (0.006, 0.055, 0.016)), MAT["gold"])
+    for i in range(3):
+        s.add(box((-0.420, 0.72 + i * 0.15, 0.10), (0.050, 0.045, 0.66)), MAT["black"])
+        s.add(box((-0.418, 0.745 + i * 0.15, 0.10), (0.052, 0.008, 0.66)), MAT["silver2"])
+    s.add(box((-0.418, 0.62, 0.52), (0.045, 0.012, 0.34)), MAT["pcb2"])
+    for i in range(5):
+        s.add(box((-0.392, 0.62, 0.39 + i * 0.065), (0.008, 0.016, 0.040)), MAT["chip"])
+    screw(s, (-0.386, 0.62, 0.70), (1, 0, 0), 0.022)
+    for i in range(4):
+        s.add(box((-0.30 + i * 0.14, 1.76, -0.905), (0.085, 0.050, 0.012)), MAT["black"])
+        s.add(box((-0.30 + i * 0.14, 1.745, -0.913), (0.060, 0.012, 0.006)), MAT["led_blue"])
+    s.add(box((0.16, 1.76, -0.905), (0.14, 0.10, 0.012)), MAT["chrome"])
+    for i in range(3):
+        s.add(cyl((0.34 + i * 0.095, 1.72, -0.905), (0, 0, 1), 0.026, 0.010, n=12), MAT["gold"])
+    for i in range(5):
+        s.add(box((-0.32 + i * 0.15, 0.52, -0.905), (0.11, 0.30, 0.012)), MAT["alu_dark"])
+        for j in range(4):
+            s.add(box((-0.32 + i * 0.15, 0.42 + j * 0.065, -0.913), (0.060, 0.012, 0.004)), MAT["black"])
+    for i in range(12):
+        s.add(box((-0.38 + i * 0.065, 0.584, -0.30), (0.028, 0.006, 0.70)), MAT["black"])
+    for z in (-0.82, 0.82):
+        for y in (0.12, 1.92):
+            screw(s, (0.565, y, z), (1, 0, 0), 0.028)
 
     for k in range(3):
         z = -0.55 + k * 0.32
@@ -192,8 +247,10 @@ def scene_case(u, t):
     press = max(0.0, 1.0 - u * 14)
     add_tower(s, t * 2.6 + 0.25, led, press)
     add_monitor(s, (-1.98, 1.24, -0.72), on=False, w=1.95, h=1.20)
-    cam = Camera((0.0, 1.03, -0.05), 0.96 + 0.16 * ease(u), 0.16 - 0.05 * u,
-                 6.55 - 0.75 * ease(u), fov=40)
+    cam = Camera((0.0, 1.03, -0.05),
+                 0.96 + 0.16 * ease(u) + beat(u, YAW),
+                 0.16 - 0.05 * u + beat(u, PITCH),
+                 6.55 - 0.75 * ease(u) + beat(u, DIST), fov=40)
     return s, cam
 
 
@@ -224,6 +281,22 @@ def scene_psu(u, t):
     s.add(disc((0.44, 0.47, 0.741), (0, 0, 1), 0.11, n=20), MAT["black"])
     s.add(cyl((-0.45, 0.30, 0.741), (0, 0, 1), 0.075, 0.014, n=14), MAT["alu_dark"])
     s.add(disc((-0.45, 0.30, 0.750), (0, 0, 1), 0.055, n=14), MAT["alu"])
+    # potongan panel: PCB, kapasitor, transformator, sirip, gril kipas
+    s.add(box((-0.28, 0.44, 0.738), (0.70, 0.34, 0.006)), MAT["pcb"])
+    for i in range(9):
+        s.add(box((-0.58 + i * 0.075, 0.36, 0.744), (0.010, 0.16, 0.004)), MAT["trace"])
+    for k in range(3):
+        s.add(cyl((-0.50 + k * 0.19, 0.55, 0.752), (0, 0, 1), 0.068, 0.045, n=14), MAT["navy"])
+        s.add(disc((-0.50 + k * 0.19, 0.55, 0.777), (0, 0, 1), 0.052, n=14), MAT["silver2"])
+        s.add(box((-0.50 + k * 0.19, 0.55, 0.780), (0.070, 0.006, 0.006)), MAT["black"])
+    s.add(box((0.34, 0.44, 0.752), (0.24, 0.30, 0.030)), MAT["copper"])
+    for i in range(8):
+        s.add(box((0.23 + i * 0.030, 0.44, 0.770), (0.010, 0.28, 0.010)), MAT["silver2"])
+    for r in (0.20, 0.27, 0.34, 0.41):
+        s.add(annulus((0, 0.936, 0), (0, 1, 0), r, r + 0.010, n=20), MAT["steel"])
+    for x in (-0.60, 0.60):
+        for y in (0.12, 0.80):
+            screw(s, (x, y, 0.730), (0, 0, 1), 0.030)
 
     for k in range(3):
         z = -0.30 + k * 0.28
@@ -236,8 +309,9 @@ def scene_psu(u, t):
     if u > 0.42:
         s.add(annulus((1.705, 0.462, -0.28), (0, 1, 0), 0.10, 0.13, n=12),
               led_mat((255, 190, 60), smooth((u - 0.42) / 0.18)))
-    cam = Camera((0.55, 0.52, 0), -0.38 + 0.72 * ease(u), 0.48 - 0.14 * u,
-                 7.10 - 0.80 * ease(u), fov=41)
+    cam = Camera((0.55, 0.52, 0), -0.38 + 0.72 * ease(u) + beat(u, YAW),
+                 0.48 - 0.14 * u + beat(u, PITCH),
+                 7.10 - 0.80 * ease(u) + beat(u, DIST), fov=41)
     return s, cam
 
 
@@ -273,8 +347,27 @@ def scene_cpu(u, t):
     detail_pcb(s, [(0.82, 0.30), (0.82, 0.52), (-0.82, 0.30), (-0.82, 0.52),
                    (0.30, -0.86), (0.52, -0.86), (-0.30, -0.86), (0.30, 0.86)], y=0.055)
     s.add(cyl((-0.79, 0.20, 0.0), (0, 0, 1), 0.022, 1.58, n=10), MAT["chrome"])
-    cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u), 0.98 - 0.34 * u,
-                 5.20 - 0.60 * ease(u), fov=40)
+    # IHS, VRM di dua sisi, chip BIOS berkaki, LED debug, sekrup papan
+    s.add(box((0, 0.178, 0), (0.62, 0.012, 0.62)), MAT["silver2"])
+    for i in range(4):
+        s.add(box((-0.24 + i * 0.16, 0.186, 0), (0.012, 0.004, 0.40)), MAT["alu_dark"])
+    for i in range(12):
+        s.add(box((-0.92 + i * 0.048, 0.20, -0.95), (0.024, 0.12, 0.055)), MAT["alu_dark"])
+    for i in range(8):
+        s.add(box((0.98, 0.20, -0.78 + i * 0.048), (0.055, 0.12, 0.024)), MAT["alu_dark"])
+    s.add(box((1.18, 0.20, -0.66), (0.34, 0.05, 0.26)), MAT["chip"])
+    for i in range(6):
+        s.add(box((1.04 + i * 0.055, 0.075, -0.81), (0.028, 0.014, 0.05)), MAT["gold"])
+        s.add(box((1.04 + i * 0.055, 0.075, -0.51), (0.028, 0.014, 0.05)), MAT["gold"])
+    for i in range(4):
+        s.add(box((-0.60 + i * 0.12, 0.067, 0.92), (0.060, 0.012, 0.030)),
+              led_mat(ACCENT["cyan"], 0.30 + 0.55 * smooth((u - i * 0.10) / 0.22)))
+    for x in (-0.88, 0.88):
+        for z in (-0.88, 0.88):
+            screw(s, (x, 0.075, z), (0, 1, 0), 0.032)
+    cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u) + beat(u, YAW),
+                 0.98 - 0.34 * u + beat(u, PITCH),
+                 5.20 - 0.60 * ease(u) + beat(u, DIST), fov=40)
     return s, cam
 
 
@@ -324,8 +417,19 @@ def scene_post(u, t):
         on = smooth((u - 0.12 - i * 0.16) / 0.14)
         s.add(box((1.02, 0.187, 0.62 + i * 0.20), (0.10, 0.012, 0.09)),
               led_mat(ACCENT["green"], on) if on > 0.25 else led_mat((210, 70, 70), 0.55))
-    cam = Camera((0.05, 0.30, 0), 0.48 + 0.48 * ease(u), 0.80 - 0.24 * u,
-                 6.35 - 0.70 * ease(u), fov=41)
+    # display POST 7-seg, tombol power, buzzer, sekrup papan
+    s.add(box((1.22, 0.192, 0.92), (0.22, 0.012, 0.13)), MAT["black"])
+    for i in range(3):
+        s.add(box((1.14 + i * 0.07, 0.200, 0.92), (0.045, 0.006, 0.075)),
+              led_mat((255, 92, 60), 0.42 + 0.5 * smooth((u - i * 0.12) / 0.2)))
+    s.add(cyl((-1.20, 0.20, 0.72), (0, 1, 0), 0.085, 0.030, n=14), MAT["black"])
+    s.add(annulus((-1.20, 0.218, 0.72), (0, 1, 0), 0.055, 0.080, n=14), MAT["silver2"])
+    for x in (-1.28, 1.28):
+        for z in (-1.06, 1.06):
+            screw(s, (x, 0.095, z), (0, 1, 0), 0.030)
+    cam = Camera((0.05, 0.30, 0), 0.48 + 0.48 * ease(u) + beat(u, YAW),
+                 0.80 - 0.24 * u + beat(u, PITCH),
+                 6.35 - 0.70 * ease(u) + beat(u, DIST), fov=41)
     return s, cam
 
 
@@ -360,8 +464,22 @@ def scene_ram(u, t):
                       (0.012, 0.42, 0.20)), MAT["chip"])
     s.add(cyl((-0.05, 0.155, -0.12), (0, 1, 0), 0.045, 0.018, n=10), MAT["chrome"])
     detail_pcb(s, [(0.95, -0.62), (0.95, 0.62), (-1.12, 0.62)], y=0.085, r=0.04, h=0.09)
-    cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u), 0.68 - 0.22 * u,
-                 7.80 - 0.85 * ease(u), fov=40)
+    # heatspreader berlekuk, tab slot, chip SPD, sekrup papan
+    for i in range(4):
+        x = 0.34 + i * 0.29
+        s.add(box((x + 0.053, 0.45, 0), (0.008, 0.58, 1.04)), MAT["navy"])
+        for j in range(5):
+            s.add(box((x + 0.058, 0.26 + j * 0.12, 0), (0.006, 0.050, 0.86)), MAT["silver2"])
+        for z in (-0.66, 0.66):
+            s.add(box((x, 0.10, z), (0.14, 0.10, 0.06)), MAT["plastic"])
+    for i in range(4):
+        s.add(box((-0.92 + i * 0.42, 0.172, -0.12), (0.24, 0.010, 0.24)), MAT["chip"])
+    for x in (-1.10, 1.10):
+        for z in (-0.68, 0.68):
+            screw(s, (x, 0.09, z), (0, 1, 0), 0.028)
+    cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u) + beat(u, YAW),
+                 0.68 - 0.22 * u + beat(u, PITCH),
+                 7.80 - 0.85 * ease(u) + beat(u, DIST), fov=40)
     return s, cam
 
 
@@ -382,8 +500,25 @@ def scene_gpu(u, t):
     s.add(box((-1.30, 1.02, 0.34), (0.05, 0.52, 0.30)), MAT["chrome"])
     for y in (0.86, 1.18):
         s.add(cyl((-1.335, y, 0.34), (1, 0, 0), 0.032, 0.012, n=10), MAT["copper"])
-    cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u, 0.14 - 0.05 * u,
-                 7.60 - 0.90 * ease(u), fov=42)
+    # port display, heatpipe tembaga, ventilasi shroud, konektor daya, sekrup
+    for i in range(3):
+        s.add(box((-1.346, 0.90 + i * 0.11, 0.34), (0.012, 0.065, 0.16)), MAT["black"])
+        s.add(box((-1.352, 0.90 + i * 0.11, 0.34), (0.006, 0.040, 0.12)), MAT["silver2"])
+    for i in range(2):
+        s.add(cable([(0.95, 0.80 + i * 0.22, 0.30), (0.40, 0.78 + i * 0.22, 0.28),
+                     (-0.40, 0.78 + i * 0.22, 0.28), (-0.95, 0.80 + i * 0.22, 0.30)],
+                    r=0.020, n=6), MAT["copper"])
+    for i in range(18):
+        s.add(box((-1.10 + i * 0.125, 1.345, 0.60), (0.055, 0.008, 0.030)), MAT["black"])
+    s.add(box((1.10, 1.36, 0.48), (0.26, 0.08, 0.20)), MAT["black"])
+    for i in range(4):
+        s.add(box((1.02 + i * 0.055, 1.406, 0.48), (0.030, 0.014, 0.14)), MAT["gold"])
+    for x in (-1.18, -0.60, 0.60, 1.18):
+        for y in (0.80, 1.24):
+            screw(s, (x, y, 0.642), (0, 0, 1), 0.024)
+    cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u + beat(u, YAW),
+                 0.14 - 0.05 * u + beat(u, PITCH),
+                 7.60 - 0.90 * ease(u) + beat(u, DIST), fov=42)
     return s, cam
 
 
@@ -394,8 +529,9 @@ def scene_loop(u, t):
     led = 0.55 + 0.45 * math.sin(t * 2.2) ** 2
     add_tower(s, t * 2.6 + 0.25, led, 0.0)
     add_monitor(s, (-1.98, 1.24, -0.72), on=True, u=1.0, w=1.95, h=1.20)
-    cam = Camera((0.0, 1.03, -0.05), 1.10 - 0.58 * ease(u), 0.17 + 0.08 * u,
-                 6.30 + 0.60 * ease(u), fov=40)
+    cam = Camera((0.0, 1.03, -0.05), 1.10 - 0.58 * ease(u) + beat(u, YAW),
+                 0.17 + 0.08 * u + beat(u, PITCH),
+                 6.30 + 0.60 * ease(u) + beat(u, DIST), fov=40)
     return s, cam
 
 

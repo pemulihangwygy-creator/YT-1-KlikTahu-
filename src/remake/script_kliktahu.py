@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-W, H = 2160, 3840
-FPS = 60
+W, H = 1440, 2560
+FPS = 90
 
 BRAND = "KlikTahu!"
 WATERMARK = "KlikTahu!"
@@ -14,14 +14,14 @@ STEPS = ["MOTHERBOARD", "PSU", "CPU", "RAM", "GPU", "STORAGE"]
 
 SEGMENTS = [
     {"id": "01_hook", "scene": "case", "step": 0, "accent": "cyan",
-     "title": ("Pencet power,", "apa yang terjadi?"), "eyebrow": "KLIKTAHU!  /  EP. 01",
+     "title": ("Pencet power,", "apa yang terjadi?"), "eyebrow": "KLIKTAHU!  /  TOMBOL POWER",
      "narration": (
          "Tombol power kamu pencet. Kipas berputar, lampu menyala, "
          "tapi layar masih gelap. Rusak? Belum tentu. Di balik panel itu, "
          "enam komponen bekerja berurutan, dan urutannya tidak boleh tertukar. "
          "KlikTahu akan membuktikannya, detik per detik.")},
     {"id": "02_psu", "scene": "psu", "step": 1, "accent": "yellow",
-     "title": ("Listrik masuk:", "motherboard & PSU"), "eyebrow": "TAHAP 01  /  DAYA",
+     "title": ("Listrik masuk:", "motherboard & PSU"), "eyebrow": "DAYA",
      "narration": (
          "Tombol itu tidak menyalakan PSU secara langsung. Ia hanya mengirim "
          "sinyal ke motherboard. Motherboard lalu memerintahkan PSU mengubah "
@@ -29,28 +29,28 @@ SEGMENTS = [
          "koma tiga volt DC. Setelah tegangan stabil, PSU memberi sinyal bahwa daya sudah siap. "
          "Baru semuanya boleh lanjut.")},
     {"id": "03_cpu", "scene": "cpu", "step": 2, "accent": "cyan",
-     "title": ("CPU bangun,", "BIOS dibaca"), "eyebrow": "TAHAP 02  /  INSTRUKSI PERTAMA",
+     "title": ("CPU bangun,", "BIOS dibaca"), "eyebrow": "INSTRUKSI PERTAMA",
      "narration": (
          "Sinyal itu membangunkan CPU. Tapi CPU yang baru hidup tidak punya "
          "ingatan: ia belum tahu harus mengerjakan apa. Karena itu, instruksi "
          "pertamanya diambil dari chip BIOS di motherboard. BIOS adalah peta jalan "
          "sebelum sistem operasi apa pun sempat ada.")},
     {"id": "04_post", "scene": "post", "step": 4, "accent": "green",
-     "title": ("POST:", "cek semua komponen"), "eyebrow": "TAHAP 03  /  POWER-ON SELF TEST",
+     "title": ("POST:", "cek semua komponen"), "eyebrow": "POWER-ON SELF TEST",
      "narration": (
          "BIOS menjalankan POST, pemeriksaan mandiri saat komputer menyala. "
          "RAM, kartu grafis, penyimpanan, dan papan ketik dicek dalam sepersekian detik. "
          "Kalau ada yang gagal, kamu diberi tahu lewat bunyi bip atau lampu indikator. "
          "Kalau semuanya lolos, logo motherboard akhirnya muncul di layar.")},
     {"id": "05_ram", "scene": "ram", "step": 5, "accent": "blue",
-     "title": ("Storage ke RAM:", "Windows dimuat"), "eyebrow": "TAHAP 04  /  PINDAH DATA",
+     "title": ("Storage ke RAM:", "Windows dimuat"), "eyebrow": "PINDAH DATA",
      "narration": (
          "Berikutnya, BIOS mencari sistem operasi di penyimpanan, misalnya SSD. "
          "SSD menyimpan data secara permanen, tapi terlalu lambat untuk dikerjakan "
          "CPU. Jadi Windows disalin ke RAM yang jauh lebih cepat. RAM itu pelupa: "
          "begitu listrik mati, isinya hilang. Itulah sebabnya proses pemuatan selalu diulang.")},
     {"id": "06_gpu", "scene": "gpu", "step": 4, "chip_extra": (5,), "accent": "amber",
-     "title": ("GPU:", "data jadi gambar"), "eyebrow": "TAHAP 05  /  PIKSEL PERTAMA",
+     "title": ("GPU:", "data jadi gambar"), "eyebrow": "PIKSEL PERTAMA",
      "narration": (
          "Lingkaran yang berputar itu bukan sekadar hiasan. Itu tanda penyalinan "
          "masih berjalan. Setelah selesai, GPU mengubah data menjadi jutaan piksel, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render KlikTahu 3D: 2160x3840 @ 60 fps, hard cut, audio tersinkron kata.
+"""Render KlikTahu 3D: 1440x2560 @ 90 fps, SSAA, SSAO, audio tersinkron kata.
 
     python src/remake/engine.py --stills
     python src/remake/engine.py --render
@@ -26,8 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / "build"
 OUT = ROOT / "output"
 VO_DIR = ROOT / "assets" / "vo"
-FINAL = OUT / "KlikTahu_TombolPower_4K_60fps.mp4"
-SS = 1.0
+FINAL = OUT / "KlikTahu_TombolPower_2K_90fps.mp4"
+SS = 1.5
 VO_NAMES = [s["id"] + ".mp3" for s in S.SEGMENTS]
 
 
@@ -112,7 +112,7 @@ def render_frame(t, tl, total):
     beats = S.CALLOUTS[seg["id"]]
     k = min(len(beats) - 1, int(u * len(beats)))
     local = u * len(beats) - k
-    cfa = max(0.0, min(1.0, local / 0.16, (1.0 - local) / 0.10))
+    cfa = max(0.0, min(1.0, (1.0 - local) / 0.10))
     A.callouts(d, beats[k], cfa)
     if seg["id"] == "05_ram":
         A.loading_bar(d, 12 + 84 * u, cfa)
@@ -122,9 +122,6 @@ def render_frame(t, tl, total):
     if idx is not None:
         A.captions(d, entry["words"], idx, window, accent, fade)
     A.watermark(d, t)
-    n = S.SEGMENTS.index(seg) + 1
-    A.txt(d, (60, S.H / A.SC - 92), f"{n:02d} / 07  ·  KLIKTAHU", 24,
-          A.rgba(A.C("muted"), 180), "SemiBold")
     return np.asarray(frame)
 
 
@@ -143,7 +140,9 @@ def render_video(tl, total, silent_mp4, fps, crf, preset):
     cmd = [AU.ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{S.W}x{S.H}", "-r", str(fps),
            "-i", "-", "-an", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
-           "-pix_fmt", "yuv420p", "-profile:v", "high", "-level:v", "5.2",
+           "-pix_fmt", "yuv420p", "-profile:v", "high",
+           "-g", str(fps), "-keyint_min", str(fps // 2),
+           "-x264-params", "aq-mode=2:aq-strength=0.95",
            "-movflags", "+faststart", str(silent_mp4)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     n = int(total * fps)
@@ -164,8 +163,8 @@ def main():
     ap.add_argument("--stills", action="store_true")
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--fps", type=int, default=S.FPS)
-    ap.add_argument("--crf", type=int, default=20)
-    ap.add_argument("--preset", default="veryfast")
+    ap.add_argument("--crf", type=int, default=18)
+    ap.add_argument("--preset", default="medium")
     ap.add_argument("--only-video", action="store_true")
     args = ap.parse_args()
     if not args.stills and not args.render:

@@ -2,3 +2,4 @@ numpy
 Pillow
 opencv-python-headless
 imageio-ffmpeg
+numba>=0.64
