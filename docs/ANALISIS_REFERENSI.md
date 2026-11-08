@@ -28,7 +28,7 @@ kompresi ulang. Rekayasa ulang dari nol hanya bisa menghasilkan kemiripan, bukan
 | Stream tambahan | MJPEG 1280×720 sebagai `attached_pic` (cover/thumbnail) |
 | `moov` | **di belakang** `mdat` → perlu remux `+faststart` untuk pemutar streaming |
 | Loudness | −21,7 LUFS integrated, LRA 2,7 LU, true peak −6,8 dBFS |
-| Faststart setelah remux | ya (lihat `output/VERIFIKASI.json`) |
+| Faststart setelah remux | ya (lihat `reference/VERIFIKASI.json`) |
 
 Nilai loudness sengaja **tidak diubah**: menaikkan ke −14 LUFS akan mengubah
 audio dan melanggar syarat identik.
@@ -52,7 +52,7 @@ di [`NASKAH.md`](NASKAH.md). Ringkasan:
 55.0, 58.0, 59.5, 73.0, 75.5, 81.0, 83.0, 93.5, 97.0, 101.5 detik) dari
 selisih histogram frame; sisanya transisi dissolve/gerak kamera 3D.
 
-Papan cerita 9 frame ada di [`../output/storyboard.jpg`](../output/storyboard.jpg).
+Papan cerita 9 frame ada di [`../reference/storyboard.jpg`](../reference/storyboard.jpg).
 
 ## 3. Tata visual (style guide)
 
@@ -92,4 +92,4 @@ file subtitle/ASS terpisah; identitas visual dijamin oleh frame asli.
 | `moov` di depan pada versi unggah | **YA** |
 | Selisih ukuran kontainer | +123 byte murni relokasi atom `moov` |
 
-Bukti mesin: [`../output/VERIFIKASI.json`](../output/VERIFIKASI.json).
+Bukti mesin (arsip): [`../reference/VERIFIKASI.json`](../reference/VERIFIKASI.json).

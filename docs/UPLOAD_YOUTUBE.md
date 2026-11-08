@@ -1,70 +1,43 @@
-# Panduan Unggah — Short "Tombol Power"
+# Arsip — Panduan unggah salinan identik (BUKAN video utama)
 
-## Berkas yang dipakai
+> **Dokumen ini untuk arsip.** Putaran pertama saya keliru mengartikan
+> "100% identik" sebagai salinan byte-for-byte. Setelah klarifikasi, video utama
+> adalah **KlikTahu buatan sendiri** di
+> [`output/KlikTahu_TombolPower_REMAKE_1080x1920_60fps.mp4`](../output/KlikTahu_TombolPower_REMAKE_1080x1920_60fps.mp4);
+> spesifikasi dan metadata Upload-nya ada di [`REMAKE.md`](REMAKE.md) dan
+> [`../output/KlikTahu_REMAKE_metadata.json`](../output/KlikTahu_REMAKE_metadata.json).
+> Berkas salinan di bawah **hanya arsip pembanding**, jangan diunggah.
+
+## Berkas arsip
 
 | Kebutuhan | Berkas |
 |---|---|
-| Arsip / bukti 100% identik | `output/KlikTahu_TombolPower_SHORT_FINAL.mp4` |
-| **Unggah ke YouTube** | `output/KlikTahu_TombolPower_YouTube_Upload.mp4` |
-| Thumbnail (opsional) | `output/thumbnail_source.jpg` (cover asli dari MP4, 1280×720) |
-| Metadata siap tempel | `output/metadata.json` |
-| Papan cerita | `output/storyboard.jpg` |
-| Daftar hash | `output/MANIFEST.sha256` |
+| Salinan persis | `reference/KlikTahu_TombolPower_SHORT_FINAL.mp4` |
+| Remux faststart | `reference/KlikTahu_TombolPower_YouTube_Upload.mp4` |
+| Cover asli MP4 | `reference/thumbnail_source.jpg` |
+| Metadata lama | `reference/metadata.json` |
+| Bukti hash lama | `reference/VERIFIKASI.json`, `reference/MANIFEST.sha256` |
+| Papan cerita referensi | `reference/storyboard.jpg` |
 
-Versi yang sama juga sudah dikirim ke Google Drive Anda:
+Salinan yang sama juga sempat dikirim ke Google Drive Anda:
 [FINAL identik](https://drive.google.com/file/d/1AdMLhnmtZcrUEc6YsuOzZceo_3ViT6Aj/view?usp=drivesdk) ·
-[versi unggah faststart](https://drive.google.com/file/d/1NbRmitQsfvdiNEjJ7cVzXtkeg5X-h0GS/view?usp=drivesdk) ·
-[metadata](https://drive.google.com/file/d/16cCRQ6ou1AubJG8SG3PlttKFqkTwbFUS/view?usp=drivesdk).
+[versi faststart](https://drive.google.com/file/d/1NbRmitQsfvdiNEjJ7cVzXtkeg5X-h0GS/view?usp=drivesdk) ·
+[metadata lama](https://drive.google.com/file/d/16cCRQ6ou1AubJG8SG3PlttKFqkTwbFUS/view?usp=drivesdk).
 
-Kedua MP4 punya **frame dan audio yang sama persis**. Bedanya hanya 123 byte:
-versi unggah memindahkan atom `moov` ke depan (`-movflags +faststart`) supaya
-pemutar progresif/streaming bisa mulai tanpa menunggu seluruh file. Video
-**tidak di-encode ulang** dan audio **tidak dinormalisasi** — itu akan merusak
-syarat 100% identik.
+## Catatan hak (tetap berlaku untuk arsip)
 
-## Kelayakan Shorts
+Salinan ini memuat narasi, musik, dan watermark halus `elevenbyte` dari berkas
+sumber. Mengunggah ulang konten pihak ketiga tanpa izin dapat terkena kebijakan
+*reused content* / klaim Content ID. Karena itu video utama project ini sengaja
+dibuat ulang sepenuhnya dengan naskah, VO, visual, dan efek suara orisinal.
 
-- Rasio 9:16 (720×1280) ✅
-- Durasi 1:47,73 — di bawah batas 3 menit yang berlaku sejak 15 Oktober 2024 ✅
-  (rujukan: <https://openclip.app/guides/youtube-shorts-length>)
-- Judul memuat `#Shorts` ✅
-
-YouTube mengklasifikasikan Shorts terutama dari rasio dan durasi, bukan dari
-hashtag; hashtag tetap dipakai agar mudah ditemukan.
-
-## Langkah unggah
-
-1. Buka YouTube Studio → **Create → Upload videos**.
-2. Pilih `output/KlikTahu_TombolPower_YouTube_Upload.mp4`.
-3. Tempel judul, deskripsi, tag, dan daftar bab dari `output/metadata.json`
-   (bagian `youtube`).
-4. Kategori: **Science & Technology**; bahasa: **Bahasa Indonesia**;
-   `Made for kids`: **No**.
-5. Thumbnail: untuk Shorts, YouTube umumnya mengambil frame otomatis. Bila ingin
-   memakai cover asli, unggah `output/thumbnail_source.jpg` (catatan: cover itu
-   berbentuk 16:9 hasil dari `attached_pic` MP4).
-6. Set **Private** dulu, cek pratinjau (subtitle, suara, 7 bab, loop penutup),
-   lalu ubah ke **Public** / **Scheduled**.
-
-## Sebelum publish — dua catatan penting
-
-- **Hak konten.** Video ini adalah salinan byte-for-byte dari berkas yang Anda
-  berikan, lengkap dengan narasi, musik, dan watermark halus `elevenbyte` di
-  beberapa frame. Mengunggah ulang konten pihak ketiga tanpa izin dapat terkena
-  *reused content* / klaim Content ID. Pastikan Anda pemiliknya atau punya izin.
-- **Loudness.** Audio sumber berada di −21,7 LUFS (true peak −6,8 dBFS), lebih
-  pelan dari target siaran −14 LUFS. Sengaja dibiarkan: menaikkannya akan
-  membuat audio tidak lagi identik. Jika kelak Anda menginginkan versi
-  "diperbagus", buat sebagai **episode terpisah**, bukan mengganti file ini.
-
-## Verifikasi ulang kapan saja
+## Verifikasi ulang arsip
 
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-python src/build_short.py
-python src/verify_identical.py
+python src/build_short.py --out reference
+python src/verify_identical.py --final reference/KlikTahu_TombolPower_SHORT_FINAL.mp4 \
+       --upload reference/KlikTahu_TombolPower_YouTube_Upload.mp4 \
+       --out reference/VERIFIKASI.json
 ```
-
-`verify_identical.py` keluar dengan kode 0 hanya jika SHA-256, MD5 stream video,
-MD5 stream audio, checksum 3.232 frame, dan metadata teknis semuanya cocok.

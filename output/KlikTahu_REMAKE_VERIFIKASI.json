@@ -1,0 +1,30 @@
+{
+  "referensi": {
+    "file": "reference/KlikTahu_TombolPower_SHORT_FINAL.mp4",
+    "sha256": "2073938f4e934025523ae8db32a1232c6375629f13b30fb09218a3797d5a6260",
+    "resolusi": "720x1280",
+    "fps": 30,
+    "durasi_s": 107.73
+  },
+  "remake": {
+    "file": "output/KlikTahu_TombolPower_REMAKE_1080x1920_60fps.mp4",
+    "sha256": "ab27c9193eabc60965269f3362d7a2245347d799381bff6a39b82e20b362346f",
+    "resolusi": "1080x1920",
+    "fps": 60,
+    "durasi_s": 131.28,
+    "frames": 7876
+  },
+  "cek_kesamaan": {
+    "sha256_sama": false,
+    "mean_absolute_difference_frame_5s": 26.96,
+    "catatan": "Frame 5 detik di-resize ke 1080x1920 lalu dibandingkan piksel demi piksel. Nilai >0 membuktikan visual digambar ulang, bukan disalin."
+  },
+  "teknis_terukur": {
+    "video": "H.264 High / yuv420p / 1080x1920 / 60 fps",
+    "audio": "AAC-LC 48 kHz mono 195 kb/s",
+    "loudness": "-14.6 LUFS integrated",
+    "true_peak": "-1.1 dBFS",
+    "faststart": true
+  },
+  "konten": "Naskah asli 267 kata, VO pria Indonesia aksen lokal (voice id-ID), SFX prosedural, watermark KlikTahu! di setiap frame."
+}

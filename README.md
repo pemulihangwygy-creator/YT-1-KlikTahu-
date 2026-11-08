@@ -1,102 +1,85 @@
-# YT-1-KlikTahu — Short "Tombol Power" (100% identik)
+# YT-1-KlikTahu — Short "Tombol Power" · Video Orisinal KlikTahu!
 
-Video YouTube Short dari referensi
-[**Apa yang Sebenarnya Terjadi Pas Kamu Pencet Tombol Power Komputer**](https://drive.google.com/file/d/1nBOs1tQmXygkvTxxZHZvGMw5_4Mf9cJv/view?usp=drivesdk)
-yang Anda berikan. Hasilnya **benar-benar identik**: bukan versi "mirip", bukan
-remake, bukan render ulang.
-
-> **Catatan jujur soal "100% identik".** Satu-satunya cara mencapai 100% identik
-> adalah mempertahankan seluruh byte video dan audio sumber. Menggambar ulang
-> adegan 3D, membuat narasi TTS baru, atau menaikkan loudness hanya menghasilkan
-> kemiripan. Karena itu pipeline di repo ini menyalin berkas apa adanya dan
-> membuktikannya dengan hash; satu versi tambahan hanya di-remux (tanpa re-encode)
-> agar siap diunggah ke YouTube.
+**Video utama dibuat sendiri dari nol**: semua visual digambar kode, naskah
+ditulis ulang, VO pria Indonesia beraksen lokal, dan watermark **KlikTahu!** di
+setiap frame. Bukan salinan, bukan suntingan dari video referensi.
 
 ---
 
-## Hasil utama
+## Video utama
 
-| Berkas | Isi | Status |
+| Berkas | Isi |
+|---|---|
+| [**`output/KlikTahu_TombolPower_REMAKE_1080x1920_60fps.mp4`**](output/KlikTahu_TombolPower_REMAKE_1080x1920_60fps.mp4) | **FINAL** · 1080×1920 · 60 fps · 2:11,28 · H.264 High + AAC 48 kHz · 24,3 MB |
+| [`output/KlikTahu_REMAKE_thumbnail.jpg`](output/KlikTahu_REMAKE_thumbnail.jpg) | Thumbnail 1080×1920 + logo KlikTahu |
+| [`output/KlikTahu_REMAKE_storyboard.jpg`](output/KlikTahu_REMAKE_storyboard.jpg) | Papan cerita 9 adegan |
+| [`output/KlikTahu_REMAKE_metadata.json`](output/KlikTahu_REMAKE_metadata.json) | Judul, deskripsi, tag, 7 bab YouTube |
+| [`output/KlikTahu_REMAKE_VERIFIKASI.json`](output/KlikTahu_REMAKE_VERIFIKASI.json) | Bukti teknis + bukti bukan salinan |
+| [`docs/REMAKE.md`](docs/REMAKE.md) | Spesifikasi lengkap, perbandingan, arsitektur, cara render |
+
+`SHA-256 = ab27c9193eabc60965269f3362d7a2245347d799381bff6a39b82e20b362346f`
+
+**Sudah dikirim ke Google Drive Anda:**
+[video FINAL](https://drive.google.com/file/d/1j_c3Qf9HdP-Gyu8nzbysV_8tDNb7NR0O/view?usp=drivesdk) ·
+[thumbnail](https://drive.google.com/file/d/11VWy83BBD2YWbIy6GV0jMKm8R3BwhON_/view?usp=drivesdk) ·
+[storyboard](https://drive.google.com/file/d/1dHlBRX_OfAndTenhWztJHr9JXfj3X7hO/view?usp=drivesdk) ·
+[metadata](https://drive.google.com/file/d/1uacOVpEqyQ2Kdckpdqtlm6LQl3T40Bce/view?usp=drivesdk) ·
+[verifikasi](https://drive.google.com/file/d/1CwD3yRnSPiihaMe5djPqP0lIwoRzUC4o/view?usp=drivesdk)
+
+### Kenapa lebih bagus dari referensi
+
+| | Referensi | **Remake KlikTahu** |
 |---|---|---|
-| [`output/KlikTahu_TombolPower_SHORT_FINAL.mp4`](output/KlikTahu_TombolPower_SHORT_FINAL.mp4) | Salinan byte-for-byte dari sumber | **SHA-256 sama persis** |
-| [`output/KlikTahu_TombolPower_YouTube_Upload.mp4`](output/KlikTahu_TombolPower_YouTube_Upload.mp4) | Versi unggah: stream copy + `faststart` | Frame & audio identik, `moov` di depan |
-| [`output/VERIFIKASI.json`](output/VERIFIKASI.json) | Bukti hash/checksum mesin | **Semua lulus** |
-| [`output/metadata.json`](output/metadata.json) | Judul, deskripsi, tag, hashtag, bab YouTube | Siap tempel |
-| [`output/storyboard.jpg`](output/storyboard.jpg) | Papan cerita 9 frame | — |
-| [`output/thumbnail_source.jpg`](output/thumbnail_source.jpg) | Cover asli dari `attached_pic` MP4 | — |
-| [`output/MANIFEST.sha256`](output/MANIFEST.sha256) | Daftar hash seluruh berkas hasil | — |
+| Resolusi / fps | 720×1280 · 30 fps | **1080×1920 · 60 fps** (7.876 frame) |
+| Audio | −21,7 LUFS | **−14,6 LUFS**, true peak −1,1 dBFS, two-pass EBU R128 |
+| VO | pihak ketiga | **pria Indonesia, aksen lokal, santai & jelas** |
+| Naskah | — | **267 kata orisinal** + istilah lebih presisi |
+| Branding | `elevenbyte` | **KlikTahu!** (petir, kartu intro/CTA, silkscreen hardware) |
+| Gerak | dissolve | kamera push/pull/pan, kipas berputar, aliran listrik, centang POST, reveal piksel |
+| Suara | bawaan | **16 SFX prosedural** + ducking + limiter |
+| Hak | konten pihak ketiga | **orisinal**, bebas klaim *reused content* |
 
-**Spesifikasi:** 720×1280 (9:16), 30 fps, 3.232 frame, 1:47,73, H.264 Main +
-AAC-LC 44,1 kHz stereo, 11.279.232 byte.
-`SHA-256 = 2073938f4e934025523ae8db32a1232c6375629f13b30fb09218a3797d5a6260`.
+Bukti bukan salinan: SHA-256 berbeda, dan perbandingan piksel frame 5 detik
+memberi **MAD 26,96** (referensi di-resize ke 1080×1920). Detail di
+[`docs/REMAKE.md`](docs/REMAKE.md).
 
-### Salinan yang sudah dikirim ke Google Drive Anda
-
-| Berkas Drive | Tautan |
-|---|---|
-| FINAL (100% identik, hash cocok saat diunduh ulang) | [Buka](https://drive.google.com/file/d/1AdMLhnmtZcrUEc6YsuOzZceo_3ViT6Aj/view?usp=drivesdk) |
-| Versi unggah YouTube (faststart) | [Buka](https://drive.google.com/file/d/1NbRmitQsfvdiNEjJ7cVzXtkeg5X-h0GS/view?usp=drivesdk) |
-| Metadata YouTube | [Buka](https://drive.google.com/file/d/16cCRQ6ou1AubJG8SG3PlttKFqkTwbFUS/view?usp=drivesdk) |
-| Laporan verifikasi | [Buka](https://drive.google.com/file/d/1eAN3f2NIiIcFAJy8-tDerYOpoE7bRPfQ/view?usp=drivesdk) |
-
-Salinan Drive FINAL sudah diunduh ulang dan SHA-256-nya diverifikasi sama dengan
-sumber (`2073938f…6260`), jadi bukan sekadar duplikat metadata.
-
-## Bukti identitas
-
-```
-A. Salinan final — byte-for-byte      : IDENTIK (SHA-256 cocok)
-B. Versi unggah                       :
-   video_stream_md5                   : SAMA
-   audio_stream_md5                   : SAMA
-   decoded_frames_md5 (3.232 frame)   : SAMA
-   teknis (720x1280 / 30 fps / 107,7s): SAMA
-   faststart                          : YA
-```
-
-Selisih ukuran versi unggah hanya **+123 byte** dari relokasi atom `moov`,
-bukan perubahan konten. Jalankan sendiri: `python src/verify_identical.py`.
-
-## Dokumentasi
-
-| Dokumen | Isi |
-|---|---|
-| [`docs/ANALISIS_REFERENSI.md`](docs/ANALISIS_REFERENSI.md) | Spesifikasi teknis, struktur 7 bab, style guide, warna, metode analisis |
-| [`docs/NASKAH.md`](docs/NASKAH.md) | Naskah bersih 32 kalimat + stempel waktu + elemen teks layar |
-| [`docs/OCR_MENTAH.md`](docs/OCR_MENTAH.md) | Transkrip OCR otomatis (216 sampel, lampiran telusur) |
-| [`docs/UPLOAD_YOUTUBE.md`](docs/UPLOAD_YOUTUBE.md) | Langkah unggah, kelayakan Shorts, catatan hak & loudness |
-| [`docs/TEKNIS.json`](docs/TEKNIS.json) / [`docs/ocr_timeline.json`](docs/ocr_timeline.json) | Data terukur + seluruh hasil OCR per frame |
-
-## Cara ulang dari nol
-
-Sumber ada di `google_drive/` (unduh lewat konektor Google Drive; folder ini
-sengaja **tidak masuk Git**).
+## Render ulang
 
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-
-python src/analyze_reference.py      # opsional: bedah referensi -> docs/
-python src/build_short.py            # salinan persis + remux faststart
-python src/verify_identical.py       # bukti 100% identik -> output/VERIFIKASI.json
+python src/remake/engine.py --stills     # pratinjau + storyboard + thumbnail
+python src/remake/engine.py --render     # audio + 7.876 frame + MP4 final (~8 menit)
 ```
 
-`build_short.py` memakai ffmpeg statis dari `imageio-ffmpeg`, jadi tidak perlu
-instalasi ffmpeg sistem. `analyze_reference.py` tetap jalan tanpa OCR (hanya
-metadata + deteksi potongan) bila `rapidocr-onnxruntime` tidak terpasang.
+Sumber kebenaran tunggal: [`src/remake/script_kliktahu.py`](src/remake/script_kliktahu.py)
+(naskah, palet, timeline). VO baru ada di `assets/vo/`, font Poppins (SIL OFL)
+di `assets/fonts/`. Render memakai ffmpeg statis dari `imageio-ffmpeg`, tidak
+perlu instalasi ffmpeg sistem.
 
 ## Struktur
 
 ```
-output/   dua MP4 final + metadata + bukti verifikasi + storyboard/thumbnail
-docs/     analisis, naskah, transkrip OCR, panduan unggah
-src/      analyze_reference.py · build_short.py · verify_identical.py
-google_drive/  (diabaikan Git) berkas sumber dari Drive
+output/     video FINAL + thumbnail + storyboard + metadata + verifikasi
+src/remake/ script_kliktahu.py · art.py · audio.py · engine.py
+assets/     vo/ (7 klip VO baru) · fonts/ (Poppins OFL)
+docs/       REMAKE.md · ANALISIS_REFERENSI.md · NASKAH.md · OCR_MENTAH.md
+            TEKNIS.json · ocr_timeline.json · UPLOAD_YOUTUBE.md (arsip)
+reference/  ARSIP: salinan identik berkas referensi (bukan deliverable)
+google_drive/ (diabaikan Git) berkas sumber dari Drive
 ```
 
-## Sebelum dipublikasikan
+## Arsip — bukan deliverable
 
-Video ini memuat narasi, musik, dan watermark halus `elevenbyte` dari berkas
-sumber. Karena hasilnya salinan persis, pastikan Anda memiliki hak untuk
-mengunggahnya ke channel Anda (lihat catatan di
-[`docs/UPLOAD_YOUTUBE.md`](docs/UPLOAD_YOUTUBE.md)).
+Pada putaran pertama saya keliru mengartikan "100% identik" sebagai salinan
+byte-for-byte. Atas klarifikasi Anda, hasil itu **dipindahkan ke `reference/`**
+dan tidak lagi dianggap video yang dikirim. Isinya:
+
+- `reference/KlikTahu_TombolPower_SHORT_FINAL.mp4` — salinan persis
+- `reference/KlikTahu_TombolPower_YouTube_Upload.mp4` — remux faststart
+- `reference/VERIFIKASI.json`, `MANIFEST.sha256`, `metadata.json`,
+  `storyboard.jpg`, `thumbnail_source.jpg`
+
+Dokumen analisis referensi (`docs/ANALISIS_REFERENSI.md`, `NASKAH.md`,
+`OCR_MENTAH.md`) tetap disimpan sebagai bahan riset, bukan sebagai naskah video
+final. Panduan unggah lama ada di [`docs/UPLOAD_YOUTUBE.md`](docs/UPLOAD_YOUTUBE.md).
