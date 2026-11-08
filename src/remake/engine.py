@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import multiprocessing as mp
 import subprocess
 import sys
 import time
@@ -136,7 +137,21 @@ def render_stills(tl, total):
     print(f"  -> {dst}")
 
 
-def render_video(tl, total, silent_mp4, fps, crf, preset):
+_W_TL = _W_TOTAL = _W_FPS = None
+
+
+def _worker_init(tl, total, fps):
+    global _W_TL, _W_TOTAL, _W_FPS
+    _W_TL, _W_TOTAL, _W_FPS = tl, total, fps
+    import zrender
+    zrender._lib()                 # pastikan .so termuat di proses anak
+
+
+def _render_bytes(i):
+    return render_frame(i / _W_FPS, _W_TL, _W_TOTAL).tobytes()
+
+
+def render_video(tl, total, silent_mp4, fps, crf, preset, workers=2, limit=None):
     cmd = [AU.ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{S.W}x{S.H}", "-r", str(fps),
            "-i", "-", "-an", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
@@ -145,13 +160,21 @@ def render_video(tl, total, silent_mp4, fps, crf, preset):
            "-x264-params", "aq-mode=2:aq-strength=0.95",
            "-movflags", "+faststart", str(silent_mp4)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    n = int(total * fps)
+    n = int(total * fps) if limit is None else min(int(total * fps), int(limit))
     t0 = time.time()
-    for i in range(n):
-        arr = render_frame(i / fps, tl, total)
-        proc.stdin.write(arr.tobytes())
-        if i % 600 == 0:
-            print(f"  frame {i:5d}/{n}  {i/fps:6.1f}s  {time.time()-t0:6.1f}s", flush=True)
+    if workers > 1:
+        ctx = mp.get_context("spawn")   # Numba/OpenMP tidak aman di-fork
+        with ctx.Pool(workers, initializer=_worker_init,
+                      initargs=(tl, total, fps)) as pool:
+            for i, buf in enumerate(pool.imap(_render_bytes, range(n), chunksize=2)):
+                proc.stdin.write(buf)
+                if i % 600 == 0:
+                    print(f"  frame {i:5d}/{n}  {i/fps:6.1f}s  {time.time()-t0:6.1f}s", flush=True)
+    else:
+        for i in range(n):
+            proc.stdin.write(render_frame(i / fps, tl, total).tobytes())
+            if i % 600 == 0:
+                print(f"  frame {i:5d}/{n}  {i/fps:6.1f}s  {time.time()-t0:6.1f}s", flush=True)
     proc.stdin.close()
     if proc.wait() != 0:
         raise RuntimeError("encoder ffmpeg gagal")

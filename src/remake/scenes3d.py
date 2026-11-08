@@ -27,7 +27,7 @@ MAT = {
     "blade":    M((52, 62, 76), 0.55, 28, edge=0.18),
     "blade2":   M((64, 76, 92), 0.60, 30, edge=0.18),
     "screen":   M((16, 22, 34), 0.12, 60),
-    "screen_on":M((38, 116, 202), 0.15, 50, emissive=0.58),
+    "screen_on":M((24, 68, 136), 0.12, 50, emissive=0.30),
     "window":   M((128, 196, 250), 0.10, 50, emissive=0.64),
     "white":    M((236, 244, 255), 0.20, 30, emissive=0.38),
     "chrome":   M((186, 198, 214), 0.95, 62, edge=0.20),
@@ -40,6 +40,15 @@ MAT = {
     "silver2":  M((176, 188, 204), 0.92, 58, edge=0.26),
     "navy":     M((30, 46, 72), 0.35, 30),
     "cream":    M((214, 218, 208), 0.22, 22, emissive=0.12),
+    "floor":    M((17, 24, 39), 0.14, 28),
+    "grid":     M((38, 52, 76), 0.28, 26, emissive=0.06),
+    "wall":     M((9, 14, 27), 0.06, 18),
+    "wall2":    M((15, 23, 40), 0.06, 18),
+    "key":      M((36, 44, 58), 0.20, 22),
+    "key_alt":  M((46, 68, 92), 0.26, 24),
+    "key_hi":   M((226, 178, 40), 0.35, 30, emissive=0.22),
+    "coffee":   M((48, 31, 22), 0.10, 20),
+    "desk":     M((32, 42, 60), 0.30, 32),
 }
 ACCENT = {"cyan": (70, 208, 244), "yellow": (255, 199, 32), "green": (58, 222, 142),
           "blue": (70, 138, 255), "amber": (255, 166, 56)}
@@ -68,12 +77,13 @@ PITCH = (0.0, -0.05, 0.05, 0.0)
 DIST = (0.0, -0.30, 0.18, -0.08)
 
 
-def beat(u, keys):
-    """Tiga komposisi kamera per bab, transisi halus (bukan potongan kasar)."""
+def beat(u, keys, t=0.0):
+    """Tiga komposisi kamera per bab + parallax sinambung (bukan potongan kasar)."""
     p = u * 3.0
     i = min(2, int(p))
     f = p - i
-    return keys[i] + (keys[i + 1] - keys[i]) * smooth(f)
+    base = keys[i] + (keys[i + 1] - keys[i]) * smooth(f)
+    return base + 0.014 * math.sin(t * 0.83 + 1.1) + 0.007 * math.sin(t * 0.37)
 
 
 def screw(s, c, axis, r=0.032):
@@ -88,6 +98,54 @@ def studio(s, cx=0.0, cz=0.0, rx=1.8, rz=1.4):
         pts = [[cx + rx * scale * math.cos(i * 2 * math.pi / 28), -0.058,
                 cz + rz * scale * math.sin(i * 2 * math.pi / 28)] for i in range(28)]
         s.add([np.array(pts, np.float32)], M((4, 8, 18), alpha=a), pre=True)
+
+
+def environment(s, tint=(9, 14, 27)):
+    """Set studio: lantai bergrid, dinding cyclorama, garis horizon."""
+    s.add(plane((0, -0.092, 0), (1, 0, 0), (0, 0, 1), 16, 16), MAT["floor"])
+    for i in range(-7, 8):
+        s.add(plane((i, -0.087, 0), (1, 0, 0), (0, 0, 1), 0.013, 16), MAT["grid"])
+        s.add(plane((0, -0.087, i), (1, 0, 0), (0, 0, 1), 16, 0.013), MAT["grid"])
+    s.add(plane((0, 3.8, -7.8), (1, 0, 0), (0, 1, 0), 26, 10), MAT["wall"])
+    s.add(plane((0, 0.46, -7.76), (1, 0, 0), (0, 1, 0), 26, 0.92), MAT["wall2"])
+
+
+def peripherals(s):
+    """Elemen meja: keyboard, mouse, mug (geometri, bukan gambar)."""
+    kz = 1.28
+    s.add(box((-0.05, 0.048, kz), (1.46, 0.072, 0.50)), MAT["desk"])
+    s.add(box((-0.05, 0.088, kz), (1.40, 0.008, 0.44)), MAT["case2"])
+    for i in range(14):
+        for j in range(4):
+            m = MAT["key_hi"] if (i, j) == (0, 0) else (
+                MAT["key_alt"] if (i + j) % 6 == 0 else MAT["key"])
+            s.add(plane((-0.05 - 0.61 + i * 0.094, 0.094,
+                         kz - 0.155 + j * 0.104),
+                        (1, 0, 0), (0, 0, 1), 0.074, 0.082), m)
+    s.add(box((1.00, 0.085, 1.34), (0.22, 0.10, 0.34)), MAT["plastic"])
+    s.add(plane((1.00, 0.137, 1.27), (1, 0, 0), (0, 0, 1), 0.010, 0.10), MAT["led_blue"])
+    s.add(cyl((-1.26, 0.17, 1.24), (0, 1, 0), 0.125, 0.30, n=18), MAT["cream"])
+    s.add(annulus((-1.26, 0.325, 1.24), (0, 1, 0), 0.094, 0.125, n=18), MAT["cream"])
+    s.add(disc((-1.26, 0.318, 1.24), (0, 1, 0), 0.094, n=18), MAT["coffee"])
+
+
+def arc_ring(s, c, r, t, n=14):
+    """Cincin pemuatan berputar — 14 segmen geometri, bukan partikel."""
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        u = (-math.sin(a), math.cos(a), 0)
+        v = (math.cos(a), math.sin(a), 0)
+        k = (i / n + t * 0.55) % 1.0
+        s.add(plane((c[0] + r * v[0], c[1] + r * v[1], c[2]), u, v,
+                    0.13, 0.030), led_mat((190, 232, 255), 0.10 + 0.85 * k))
+
+
+def boot_bar(s, c, w, u):
+    s.add(plane(c, (1, 0, 0), (0, 1, 0), w, 0.046), MAT["black"])
+    q = clamp(u)
+    s.add(plane((c[0] - w / 2 + w * q / 2, c[1], c[2] + 0.003),
+                (1, 0, 0), (0, 1, 0), max(w * q, 0.001), 0.032),
+          led_mat(ACCENT["cyan"], 0.62))
 
 
 def detail_pcb(s, positions, y=0.09, r=0.055, h=0.14):
@@ -145,7 +203,7 @@ def add_fan(s, c, a, r, phase, blades=7, blade=None, hub=None, ring=None):
     s.add(disc(c - a * (r * 0.055), a, r * 0.94, n=12), MAT["black"])
 
 
-def add_monitor(s, c, on=False, u=0.0, w=2.45, h=1.48):
+def add_monitor(s, c, on=False, u=0.0, w=2.45, h=1.48, t=0.0):
     x, y, z = c
     s.add(box((x, y, z), (w + 0.10, h + 0.10, 0.09)), MAT["plastic"])
     s.add(plane((x, y, z + 0.049), (1, 0, 0), (0, 1, 0), w, h),
@@ -160,6 +218,13 @@ def add_monitor(s, c, on=False, u=0.0, w=2.45, h=1.48):
                 a = clamp((u - 0.50 - k * 0.09) / 0.10)
                 s.add(plane((x + wx, y + wy, z + 0.051), (1, 0, 0), (0, 1, 0),
                             ww, wh * a), MAT["window"])
+        # UI boot generik di sepertiga atas layar (tidak tertutup kartu GPU)
+        arc_ring(s, (x - w * 0.29, y + h * 0.29, z + 0.056), 0.135, t)
+        boot_bar(s, (x + w * 0.20, y + h * 0.29, z + 0.056), w * 0.38, u)
+        for k, bw in enumerate((0.34, 0.24, 0.30)):
+            s.add(plane((x - w * 0.29 + (bw - 0.34) / 2,
+                         y + h * 0.12 - k * 0.085, z + 0.056),
+                        (1, 0, 0), (0, 1, 0), w * bw, 0.026), MAT["silk"])
 
 
 def add_tower(s, phase, led, press=0.0):
@@ -174,6 +239,8 @@ def add_tower(s, phase, led, press=0.0):
 
     for y in (0.47, 1.02, 1.57):
         add_fan(s, (0, y, 0.915), (0, 0, 1), 0.255, phase + y * 2.0)
+        s.add(annulus((0, y, 0.930), (0, 0, 1), 0.240, 0.257, n=24),
+              led_mat((70, 208, 244), 0.22 + 0.78 * led))
 
     s.add(box((0, 0.30, -0.06), (1.00, 0.56, 1.58)), MAT["case2"])
     s.add(box((-0.47, 1.40, -0.08), (0.035, 1.16, 1.30)), MAT["pcb"])
@@ -241,23 +308,26 @@ def add_tower(s, phase, led, press=0.0):
 
 # ---------------------------------------------------------------- adegan 1
 def scene_case(u, t):
-    s = Scene(top=(7, 12, 25), bottom=(20, 30, 49))
+    s = Scene(top=(7, 12, 25), bottom=(22, 33, 54))
     studio(s, 0.0, 0.0, 1.55, 1.35)
+    environment(s)
     led = smooth((u - 0.06) / 0.16)
     press = max(0.0, 1.0 - u * 14)
     add_tower(s, t * 2.6 + 0.25, led, press)
-    add_monitor(s, (-1.98, 1.24, -0.72), on=False, w=1.95, h=1.20)
+    add_monitor(s, (-1.98, 1.24, -0.72), on=False, w=1.95, h=1.20, t=t)
+    peripherals(s)
     cam = Camera((0.0, 1.03, -0.05),
-                 0.96 + 0.16 * ease(u) + beat(u, YAW),
-                 0.16 - 0.05 * u + beat(u, PITCH),
-                 6.55 - 0.75 * ease(u) + beat(u, DIST), fov=40)
+                 0.96 + 0.16 * ease(u) + beat(u, YAW, t),
+                 0.16 - 0.05 * u + beat(u, PITCH, t),
+                 6.55 - 0.75 * ease(u) + beat(u, DIST, t), fov=40)
     return s, cam
 
 
 # ---------------------------------------------------------------- adegan 2
 def scene_psu(u, t):
-    s = Scene(top=(8, 13, 25), bottom=(23, 30, 44))
+    s = Scene(top=(9, 12, 28), bottom=(27, 26, 48))
     studio(s, 0.20, 0.0, 1.75, 1.30)
+    environment(s)
     phase = t * 3.0
     s.add(box((0, 0.46, 0), (1.62, 0.86, 1.42)), MAT["case"])
     s.add(box((0, 0.46, 0.715), (1.54, 0.78, 0.02)), MAT["case2"])
@@ -309,16 +379,17 @@ def scene_psu(u, t):
     if u > 0.42:
         s.add(annulus((1.705, 0.462, -0.28), (0, 1, 0), 0.10, 0.13, n=12),
               led_mat((255, 190, 60), smooth((u - 0.42) / 0.18)))
-    cam = Camera((0.55, 0.52, 0), -0.38 + 0.72 * ease(u) + beat(u, YAW),
-                 0.48 - 0.14 * u + beat(u, PITCH),
-                 7.10 - 0.80 * ease(u) + beat(u, DIST), fov=41)
+    cam = Camera((0.55, 0.52, 0), -0.38 + 0.72 * ease(u) + beat(u, YAW, t),
+                 0.48 - 0.14 * u + beat(u, PITCH, t),
+                 7.10 - 0.80 * ease(u) + beat(u, DIST, t), fov=41)
     return s, cam
 
 
 # ---------------------------------------------------------------- adegan 3
 def scene_cpu(u, t):
-    s = Scene(top=(7, 13, 26), bottom=(18, 31, 46))
+    s = Scene(top=(6, 20, 27), bottom=(14, 38, 44))
     studio(s, 0.0, 0.0, 2.10, 2.00)
+    environment(s)
     s.add(box((0, 0.02, 0), (2.05, 0.07, 2.05)), MAT["pcb"])
     for i in range(14):
         s.add(box((-0.90 + i * 0.15, 0.058, -0.88), (0.012, 0.006, 0.72)), MAT["trace"])
@@ -365,9 +436,9 @@ def scene_cpu(u, t):
     for x in (-0.88, 0.88):
         for z in (-0.88, 0.88):
             screw(s, (x, 0.075, z), (0, 1, 0), 0.032)
-    cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u) + beat(u, YAW),
-                 0.98 - 0.34 * u + beat(u, PITCH),
-                 5.20 - 0.60 * ease(u) + beat(u, DIST), fov=40)
+    cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u) + beat(u, YAW, t),
+                 0.98 - 0.34 * u + beat(u, PITCH, t),
+                 5.20 - 0.60 * ease(u) + beat(u, DIST, t), fov=40)
     return s, cam
 
 
@@ -382,8 +453,9 @@ def _hinge(polys, ang):
 
 # ---------------------------------------------------------------- adegan 4
 def scene_post(u, t):
-    s = Scene(top=(8, 14, 27), bottom=(19, 32, 45))
+    s = Scene(top=(10, 13, 29), bottom=(26, 24, 52))
     studio(s, 0.0, 0.0, 2.05, 1.85)
+    environment(s)
     s.add(box((0, 0.04, 0), (2.75, 0.08, 2.35)), MAT["pcb"])
     for i in range(11):
         s.add(box((-1.24 + i * 0.24, 0.083, -1.02), (0.012, 0.006, 0.78)), MAT["trace"])
@@ -427,16 +499,17 @@ def scene_post(u, t):
     for x in (-1.28, 1.28):
         for z in (-1.06, 1.06):
             screw(s, (x, 0.095, z), (0, 1, 0), 0.030)
-    cam = Camera((0.05, 0.30, 0), 0.48 + 0.48 * ease(u) + beat(u, YAW),
-                 0.80 - 0.24 * u + beat(u, PITCH),
-                 6.35 - 0.70 * ease(u) + beat(u, DIST), fov=41)
+    cam = Camera((0.05, 0.30, 0), 0.48 + 0.48 * ease(u) + beat(u, YAW, t),
+                 0.80 - 0.24 * u + beat(u, PITCH, t),
+                 6.35 - 0.70 * ease(u) + beat(u, DIST, t), fov=41)
     return s, cam
 
 
 # ---------------------------------------------------------------- adegan 5
 def scene_ram(u, t):
-    s = Scene(top=(8, 13, 27), bottom=(19, 31, 50))
+    s = Scene(top=(6, 15, 31), bottom=(16, 32, 58))
     studio(s, 0.0, 0.0, 2.20, 1.55)
+    environment(s)
     s.add(box((0, 0.04, 0), (2.45, 0.08, 1.60)), MAT["pcb"])
     for i in range(7):
         s.add(box((-1.00, 0.083, -0.58 + i * 0.18), (1.55, 0.006, 0.012)), MAT["trace"])
@@ -477,21 +550,24 @@ def scene_ram(u, t):
     for x in (-1.10, 1.10):
         for z in (-0.68, 0.68):
             screw(s, (x, 0.09, z), (0, 1, 0), 0.028)
-    cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u) + beat(u, YAW),
-                 0.68 - 0.22 * u + beat(u, PITCH),
-                 7.80 - 0.85 * ease(u) + beat(u, DIST), fov=40)
+    cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u) + beat(u, YAW, t),
+                 0.68 - 0.22 * u + beat(u, PITCH, t),
+                 7.80 - 0.85 * ease(u) + beat(u, DIST, t), fov=40)
     return s, cam
 
 
 # ---------------------------------------------------------------- adegan 6
 def scene_gpu(u, t):
-    s = Scene(top=(7, 12, 24), bottom=(21, 30, 47))
+    s = Scene(top=(7, 12, 24), bottom=(23, 32, 50))
     studio(s, 0.0, -0.25, 2.15, 1.45)
+    environment(s)
     on = u > 0.48
-    add_monitor(s, (0, 1.32, -1.15), on=on, u=u, w=2.85, h=1.68)
+    add_monitor(s, (0, 1.32, -1.15), on=on, u=u, w=2.85, h=1.68, t=t)
     s.add(box((0, 1.02, 0.48), (2.55, 0.60, 0.30)), MAT["alu"])
     for x in (-0.60, 0.60):
         add_fan(s, (x, 1.02, 0.648), (0, 0, 1), 0.245, t * 3.2 + x, blades=9)
+        s.add(annulus((x, 1.02, 0.662), (0, 0, 1), 0.230, 0.246, n=24),
+              led_mat((70, 150, 255), 0.30 + 0.55 * u))
     s.add(box((0, 0.705, 0.48), (1.55, 0.045, 0.24)), MAT["gold"])
     s.add(box((0, 1.335, 0.48), (2.55, 0.035, 0.30)), MAT["alu_dark"])
     s.add(box((1.24, 1.02, 0.48), (0.06, 0.56, 0.34)), MAT["steel"])
@@ -516,22 +592,24 @@ def scene_gpu(u, t):
     for x in (-1.18, -0.60, 0.60, 1.18):
         for y in (0.80, 1.24):
             screw(s, (x, y, 0.642), (0, 0, 1), 0.024)
-    cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u + beat(u, YAW),
-                 0.14 - 0.05 * u + beat(u, PITCH),
-                 7.60 - 0.90 * ease(u) + beat(u, DIST), fov=42)
+    cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u + beat(u, YAW, t),
+                 0.14 - 0.05 * u + beat(u, PITCH, t),
+                 7.60 - 0.90 * ease(u) + beat(u, DIST, t), fov=42)
     return s, cam
 
 
 # ---------------------------------------------------------------- adegan 7
 def scene_loop(u, t):
-    s = Scene(top=(7, 12, 25), bottom=(21, 31, 50))
+    s = Scene(top=(9, 15, 30), bottom=(27, 38, 60))
     studio(s, 0.0, 0.0, 1.60, 1.40)
+    environment(s)
     led = 0.55 + 0.45 * math.sin(t * 2.2) ** 2
     add_tower(s, t * 2.6 + 0.25, led, 0.0)
-    add_monitor(s, (-1.98, 1.24, -0.72), on=True, u=1.0, w=1.95, h=1.20)
-    cam = Camera((0.0, 1.03, -0.05), 1.10 - 0.58 * ease(u) + beat(u, YAW),
-                 0.17 + 0.08 * u + beat(u, PITCH),
-                 6.30 + 0.60 * ease(u) + beat(u, DIST), fov=40)
+    add_monitor(s, (-1.98, 1.24, -0.72), on=True, u=1.0, w=1.95, h=1.20, t=t)
+    peripherals(s)
+    cam = Camera((0.0, 1.03, -0.05), 1.10 - 0.58 * ease(u) + beat(u, YAW, t),
+                 0.17 + 0.08 * u + beat(u, PITCH, t),
+                 6.30 + 0.60 * ease(u) + beat(u, DIST, t), fov=40)
     return s, cam
 
 

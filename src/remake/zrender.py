@@ -36,7 +36,7 @@ def _lib():
         subprocess.run(["gcc", "-O3", "-march=native", "-ffast-math", "-shared", "-fPIC",
                         "-o", str(LIB), str(SRC), "-lm"], check=True)
     lib = ctypes.CDLL(str(LIB))
-    lib.raster.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int] + [ctypes.c_void_p] * 8
+    lib.raster.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int] + [ctypes.c_void_p] * 12
     lib.raster.restype = None
     lib.post.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
     lib.post.restype = None
@@ -122,7 +122,7 @@ def build_triangles(scene, cam, RW, RH):
     spec = (METAL[:, None] * np.maximum(0.0, (VN @ h)[:, None]) ** SHINE[:, None]
             if np.any(METAL) else 0.0)
     fres = METAL * 0.22 * (1.0 - df) ** 2
-    col = col + (0.85 * spec + 0.80 * fres[:, None]) * _SPEC[None, :]
+    col = col + (0.30 * spec + 0.25 * fres[:, None]) * _SPEC[None, :]
     col = col * (1 - EMIS[:, None]) + np.minimum(BASE * 1.55, 1.0) * EMIS[:, None]
     RGB = np.clip(col * 1.12, 0, 1) ** 0.92 * 255.0
 
@@ -156,17 +156,40 @@ def build_triangles(scene, cam, RW, RH):
     if not n:
         return 0, None
 
+    # Mikro-tekstur prosedural: pola dipilih dari sifat material per muka.
+    r, g, b_ = base[:, 0], base[:, 1], base[:, 2]
+    mx = base.max(axis=1)
+    pat = np.zeros(F, np.float32)
+    opaque = (alpha > 0.99) & (emis < 0.15)
+    pat[(mx < 0.13) & opaque] = 3
+    pat[(mx >= 0.13) & (mx < 0.50) & (metal < 0.55) & opaque] = 4
+    pat[(metal > 0.65) & opaque] = 1
+    pat[(g > r * 1.25) & (g > b_ * 1.08) & (r < 0.22) & opaque] = 2
+    PM = np.stack([metal, shine, pat], axis=1)
+    pm = np.ascontiguousarray(PM[rep[a]], dtype=np.float32)
+
+    # Normal & posisi dunia diskalakan 1/z -> interpolasi perspektif-benar.
+    vn_scaled = (VN @ B.T) * iz[:, None]
+    vp_scaled = V * iz[:, None]
+    toview = np.array([0.0, 0.0, -1.0], np.float32)
+    h1 = G.norm(G._L1 @ B.T + toview)
+    h2 = G.norm(G._L2 @ B.T + toview)
+    lit = np.concatenate([h1, h2, G._SPEC]).astype(np.float32)
+
     vx = np.stack([sx[a], sx[bb], sx[cc]], axis=1).ravel()
     vy = np.stack([sy[a], sy[bb], sy[cc]], axis=1).ravel()
     viz = np.stack([iz[a], iz[bb], iz[cc]], axis=1).ravel()
     vc = np.stack([RGB[a], RGB[bb], RGB[cc]], axis=1).reshape(-1, 3).ravel()
+    vn = np.stack([vn_scaled[a], vn_scaled[bb], vn_scaled[cc]], axis=1).reshape(-1, 3).ravel()
+    vp = np.stack([vp_scaled[a], vp_scaled[bb], vp_scaled[cc]], axis=1).reshape(-1, 3).ravel()
     va = np.round(ALPHA[a] * 255).astype(np.uint8)
     vb = (ALPHA[a] < 0.999).astype(np.uint8)
 
     def ct(x, dt):
         return np.ascontiguousarray(x, dtype=dt)
     return n, (ct(vx, np.float32), ct(vy, np.float32), ct(viz, np.float32),
-               ct(vc, np.float32), va, vb)
+               ct(vc, np.float32), ct(vn, np.float32), ct(vp, np.float32),
+               va, vb, pm, ct(lit, np.float32))
 
 
 def render(scene, cam, W, H, ss=1.0, zbuf=None):
@@ -189,9 +212,10 @@ def render(scene, cam, W, H, ss=1.0, zbuf=None):
 
     n, tri = build_triangles(scene, cam, RW, RH)
     if n:
-        vx, vy, viz, vc, va, vb = tri
+        vx, vy, viz, vc, vn, vp, va, vb, pm, lit = tri
         _LIB.raster(RW, RH, n, vx.ctypes.data, vy.ctypes.data, viz.ctypes.data,
-                    vc.ctypes.data, va.ctypes.data, vb.ctypes.data,
+                    vc.ctypes.data, vn.ctypes.data, vp.ctypes.data,
+                    va.ctypes.data, vb.ctypes.data, pm.ctypes.data, lit.ctypes.data,
                     zbuf.ctypes.data, rgb.ctypes.data)
     ao_map = None
     if USE_SSAO:

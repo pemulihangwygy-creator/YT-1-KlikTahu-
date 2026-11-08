@@ -1,5 +1,6 @@
-/* Rasterizer z-buffer per-piksel: scanline dengan rentang-x analitik.
-   Perspektif benar (1/z linear), Gouraud, alpha blend. Loop piksel di C. */
+/* Rasterizer z-buffer per-piksel: scanline analitik, perspektif benar (1/z),
+   pencahayaan specular PER-PIKSEL dari normal terinterpolasi, dan mikro-tekstur
+   prosedural dari posisi dunia (tanpa tekstur/gambar eksternal). */
 #include <math.h>
 
 static inline float fmin3(float a, float b, float c) {
@@ -11,11 +12,34 @@ static inline float fmax3(float a, float b, float c) {
     return m > c ? m : c;
 }
 
+/* LUT sinus 1024 entri: mikro-tekstur tanpa sinf per piksel. */
+static float TBL[1024];
+static float SLUT[3][256];
+static int TBL_READY = 0;
+static void init_tbl(void) {
+    if (TBL_READY) return;
+    for (int i = 0; i < 1024; ++i)
+        TBL[i] = sinf((float)i * 6.28318530718f / 1024.0f);
+    for (int k = 0; k < 3; ++k) {
+        float e = (float)(16 << k);          /* 16, 32, 64 */
+        for (int i = 0; i < 256; ++i)
+            SLUT[k][i] = powf((float)i / 255.0f, e);
+    }
+    TBL_READY = 1;
+}
+
 void raster(int W, int H, int n,
             const float *vx, const float *vy, const float *viz,
-            const float *vc, const unsigned char *va,
-            const unsigned char *vb, float *zbuf, unsigned char *rgb)
+            const float *vc, const float *vn, const float *vp,
+            const unsigned char *va, const unsigned char *vb,
+            const float *pm, const float *lit,
+            float *zbuf, unsigned char *rgb)
 {
+    init_tbl();
+    const float h1x = lit[0], h1y = lit[1], h1z = lit[2];
+    const float h2x = lit[3], h2y = lit[4], h2z = lit[5];
+    const float sr = lit[6], sg = lit[7], sb = lit[8];
+
     for (int t = 0; t < n; ++t) {
         int i0 = 3 * t, i1 = i0 + 1, i2 = i0 + 2;
         float x0 = vx[i0], x1 = vx[i1], x2 = vx[i2];
@@ -35,7 +59,6 @@ void raster(int W, int H, int n,
         if (den < 1e-8f && den > -1e-8f) continue;
         float invden = 1.0f / den;
 
-        /* l_i(sx,sy) = a_i*sx + c_i*sy + b_i */
         float a0 = (y1 - y2) * invden;
         float c0 = (x2 - x1) * invden;
         float b0 = (-(y1 - y2) * x2 - (x2 - x1) * y2) * invden;
@@ -47,9 +70,22 @@ void raster(int W, int H, int n,
         float b2 = 1.0f - b0 - b1;
 
         float z0 = viz[i0], z1 = viz[i1], z2 = viz[i2];
-        float r0 = vc[3 * i0], r1 = vc[3 * i1], r2 = vc[3 * i2];
-        float g0 = vc[3 * i0 + 1], g1 = vc[3 * i1 + 1], g2 = vc[3 * i2 + 1];
-        float b_0 = vc[3 * i0 + 2], b_1 = vc[3 * i1 + 2], b_2 = vc[3 * i2 + 2];
+        int c0i = 9 * t, c1i = c0i + 3, c2i = c0i + 6;
+        float r0 = vc[c0i], r1 = vc[c1i], r2 = vc[c2i];
+        float g0 = vc[c0i + 1], g1 = vc[c1i + 1], g2 = vc[c2i + 1];
+        float b_0 = vc[c0i + 2], b_1 = vc[c1i + 2], b_2 = vc[c2i + 2];
+        float nx0 = vn[c0i], nx1 = vn[c1i], nx2 = vn[c2i];
+        float ny0 = vn[c0i + 1], ny1 = vn[c1i + 1], ny2 = vn[c2i + 1];
+        float nz0 = vn[c0i + 2], nz1 = vn[c1i + 2], nz2 = vn[c2i + 2];
+        float wx0 = vp[c0i], wx1 = vp[c1i], wx2 = vp[c2i];
+        float wy0 = vp[c0i + 1], wy1 = vp[c1i + 1], wy2 = vp[c2i + 1];
+        float wz0 = vp[c0i + 2], wz1 = vp[c1i + 2], wz2 = vp[c2i + 2];
+
+        float metal = pm[3 * t], shine = pm[3 * t + 1];
+        int ipat = (int)(pm[3 * t + 2] + 0.5f);
+        int lut = shine < 20.0f ? 0 : (shine < 44.0f ? 1 : 2);
+        int metallic = metal > 0.02f;
+        int enh = metallic || ipat;
         float alpha = (float)va[t] / 255.0f;
         int blend = vb[t];
 
@@ -96,10 +132,28 @@ void raster(int W, int H, int n,
             float rr = p0 * r0 + p1 * r1 + p2 * r2;
             float gg = p0 * g0 + p1 * g1 + p2 * g2;
             float bb = p0 * b_0 + p1 * b_1 + p2 * b_2;
+            float NX = 0, NY = 0, NZ = 0, WX = 0, WY = 0, WZ = 0;
+            if (enh) {
+                NX = p0 * nx0 + p1 * nx1 + p2 * nx2;
+                NY = p0 * ny0 + p1 * ny1 + p2 * ny2;
+                NZ = p0 * nz0 + p1 * nz1 + p2 * nz2;
+                WX = p0 * wx0 + p1 * wx1 + p2 * wx2;
+                WY = p0 * wy0 + p1 * wy1 + p2 * wy2;
+                WZ = p0 * wz0 + p1 * wz1 + p2 * wz2;
+            }
             float dz = a0 * z0 + a1 * z1 + a2 * z2;
             float dr = a0 * r0 + a1 * r1 + a2 * r2;
             float dg = a0 * g0 + a1 * g1 + a2 * g2;
             float db = a0 * b_0 + a1 * b_1 + a2 * b_2;
+            float dNX = 0, dNY = 0, dNZ = 0, dWX = 0, dWY = 0, dWZ = 0;
+            if (enh) {
+                dNX = a0 * nx0 + a1 * nx1 + a2 * nx2;
+                dNY = a0 * ny0 + a1 * ny1 + a2 * ny2;
+                dNZ = a0 * nz0 + a1 * nz1 + a2 * nz2;
+                dWX = a0 * wx0 + a1 * wx1 + a2 * wx2;
+                dWY = a0 * wy0 + a1 * wy1 + a2 * wy2;
+                dWZ = a0 * wz0 + a1 * wz1 + a2 * wz2;
+            }
             int row = py * W;
 
             for (int px = lo; px <= hi; ++px) {
@@ -107,25 +161,64 @@ void raster(int W, int H, int n,
                 if (iz > zbuf[idx]) {
                     if (!blend) zbuf[idx] = iz;
                     int c = idx * 3;
+                    float tex = 1.0f;
+                    float add = 0.0f;
+                    float invz = 1.0f / iz;
+                    if (ipat) {
+                        float wx = WX * invz, wy = WY * invz, wz = WZ * invz;
+                        if (ipat == 1) {                 /* logam disikat */
+                            tex = 0.945f + 0.055f * TBL[(int)(wy * 760.0f + wx * 23.0f) & 1023];
+                        } else if (ipat == 2) {          /* papan PCB */
+                            float v = TBL[(int)(wx * 330.0f) & 1023] *
+                                      TBL[(int)(wz * 330.0f) & 1023];
+                            tex = 0.925f + 0.075f * v;
+                        } else if (ipat == 3) {          /* plastik gelap / gril */
+                            tex = 0.900f + 0.100f * TBL[(int)((wx + wz) * 520.0f) & 1023];
+                        } else if (ipat == 4) {          /* plastik sedang */
+                            tex = 0.945f + 0.055f * TBL[(int)(wx * 410.0f + wz * 410.0f) & 1023];
+                        } else {                         /* karet */
+                            tex = 0.960f + 0.040f * TBL[(int)(wy * 900.0f) & 1023];
+                        }
+                    }
+                    if (metallic) {
+                        float nx = NX * invz, ny = NY * invz, nz = NZ * invz;
+                        float s1 = (nx * h1x + ny * h1y + nz * h1z) * 1.12f;
+                        float s2 = (nx * h2x + ny * h2y + nz * h2z) * 1.12f;
+                        s1 = s1 > 1.0f ? 1.0f : (s1 > 0.0f ? s1 : 0.0f);
+                        s2 = s2 > 1.0f ? 1.0f : (s2 > 0.0f ? s2 : 0.0f);
+                        float sp1 = SLUT[lut][(int)(s1 * 255.0f)];
+                        float sp2 = SLUT[lut][(int)(s2 * 255.0f)];
+                        float df = -nz * 1.12f;
+                        df = df < 0.0f ? 0.0f : (df > 1.0f ? 1.0f : df);
+                        float fres = metal * 0.20f * (1.0f - df) * (1.0f - df);
+                        add = metal * (0.95f * sp1 + 0.42f * sp2) + fres;
+                    }
+                    float R = rr * tex + add * sr * 190.0f;
+                    float G = gg * tex + add * sg * 190.0f;
+                    float B = bb * tex + add * sb * 190.0f;
+                    R = R < 0.0f ? 0.0f : (R > 255.0f ? 255.0f : R);
+                    G = G < 0.0f ? 0.0f : (G > 255.0f ? 255.0f : G);
+                    B = B < 0.0f ? 0.0f : (B > 255.0f ? 255.0f : B);
                     if (blend) {
                         float k = 1.0f - alpha;
-                        rgb[c]     = (unsigned char)(rgb[c]     * k + rr * alpha);
-                        rgb[c + 1] = (unsigned char)(rgb[c + 1] * k + gg * alpha);
-                        rgb[c + 2] = (unsigned char)(rgb[c + 2] * k + bb * alpha);
+                        rgb[c]     = (unsigned char)(rgb[c]     * k + R * alpha);
+                        rgb[c + 1] = (unsigned char)(rgb[c + 1] * k + G * alpha);
+                        rgb[c + 2] = (unsigned char)(rgb[c + 2] * k + B * alpha);
                     } else {
-                        rgb[c]     = (unsigned char)(rr < 0 ? 0 : (rr > 255 ? 255 : rr));
-                        rgb[c + 1] = (unsigned char)(gg < 0 ? 0 : (gg > 255 ? 255 : gg));
-                        rgb[c + 2] = (unsigned char)(bb < 0 ? 0 : (bb > 255 ? 255 : bb));
+                        rgb[c] = (unsigned char)R;
+                        rgb[c + 1] = (unsigned char)G;
+                        rgb[c + 2] = (unsigned char)B;
                     }
                 }
                 iz += dz; rr += dr; gg += dg; bb += db;
+                NX += dNX; NY += dNY; NZ += dNZ;
+                WX += dWX; WY += dWY; WZ += dWZ;
             }
         }
     }
 }
 
-/* Ambient occlusion murah dari z-buffer: 8 sampel kedalaman sekitar piksel.
-   Daerah cekung / kontak antar objek jadi lebih gelap -> kesan volume. */
+/* Ambient occlusion murah dari z-buffer (fallback bila SSAO Numba nonaktif). */
 void post(int W, int H, const float *zbuf, unsigned char *rgb)
 {
     const int r1 = 4, r2 = 11;
