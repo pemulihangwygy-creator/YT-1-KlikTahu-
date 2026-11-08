@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render KlikTahu 3D: 1080x1920 @ 60 fps, hard cut, audio tersinkron kata.
+"""Render KlikTahu 3D: 2160x3840 @ 60 fps, hard cut, audio tersinkron kata.
 
     python src/remake/engine.py --stills
     python src/remake/engine.py --render
@@ -95,7 +95,7 @@ def render_frame(t, tl, total):
         frame = Image.fromarray(rgb)
         d = ImageDraw.Draw(frame, "RGBA")
         A.scrims(d)
-        A.chip_bar(d, 6.0, A.C("yellow"))
+        A.chip_bar(d, 6, A.C("yellow"))
         A.outro_cta(d, p, A.C("yellow"))
         A.watermark(d, t)
         return np.asarray(frame)
@@ -107,8 +107,17 @@ def render_frame(t, tl, total):
     frame = Image.fromarray(rgb)
     d = ImageDraw.Draw(frame, "RGBA")
     A.scrims(d)
-    A.chip_bar(d, seg["step"] + u, accent)
+    A.chip_bar(d, seg["step"], accent, seg.get("chip_extra", ()))
     A.title_block(d, seg, u)
+    beats = S.CALLOUTS[seg["id"]]
+    k = min(len(beats) - 1, int(u * len(beats)))
+    local = u * len(beats) - k
+    cfa = max(0.0, min(1.0, local / 0.16, (1.0 - local) / 0.10))
+    A.callouts(d, beats[k], cfa)
+    if seg["id"] == "05_ram":
+        A.loading_bar(d, 12 + 84 * u, cfa)
+    if seg["id"] == "06_gpu" and u > 0.62:
+        A.stamp(frame, min(1.0, (u - 0.62) / 0.12))
     idx, window, fade = active_caption(entry, t)
     if idx is not None:
         A.captions(d, entry["words"], idx, window, accent, fade)

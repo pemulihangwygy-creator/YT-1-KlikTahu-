@@ -33,6 +33,10 @@ MAT = {
     "chrome":   M((186, 198, 214), 0.95, 62, edge=0.20),
     "copper":   M((190, 118, 66), 0.88, 42),
     "chip":     M((26, 32, 38), 0.30, 26),
+    "silk":     M((188, 198, 186), 0.18, 18, emissive=0.16),
+    "smd":      M((22, 26, 30), 0.28, 22),
+    "rubber":   M((18, 21, 27), 0.22, 18),
+    "led_blue": M((56, 148, 255), 0.15, 30, emissive=0.88),
 }
 ACCENT = {"cyan": (70, 208, 244), "yellow": (255, 199, 32), "green": (58, 222, 142),
           "blue": (70, 138, 255), "amber": (255, 166, 56)}
@@ -72,6 +76,27 @@ def detail_pcb(s, positions, y=0.09, r=0.055, h=0.14):
         else:
             s.add(cyl((x, y + h / 2, z), (0, 1, 0), r, h, n=12), MAT["alu_dark"])
             s.add(cyl((x, y + h + 0.006, z), (0, 1, 0), r * 0.78, 0.012, n=12), MAT["chrome"])
+
+
+def pcb_art(s, x0, z0, w, d, y, seed=0):
+    """Silkscreen, komponen SMD, sekrup, dan jalur LED di tepi papan."""
+    for i in range(18):
+        x = x0 - w / 2 + 0.08 + i * (w - 0.16) / 17
+        s.add(box((x, y, z0 + d / 2 - 0.07), (0.026, 0.004, 0.010)), MAT["silk"])
+    for i in range(12):
+        z = z0 - d / 2 + 0.10 + i * (d - 0.20) / 11
+        s.add(box((x0 - w / 2 + 0.07, y, z), (0.010, 0.004, 0.026)), MAT["silk"])
+    for i in range(8):
+        f = (i * 0.6180339 + seed * 0.37) % 1.0
+        x = x0 - w / 2 + 0.14 + f * (w - 0.28)
+        z = z0 + d / 2 - 0.16
+        s.add(box((x, y, z), (0.050, 0.014, 0.028)), MAT["smd"])
+        s.add(box((x, y + 0.009, z), (0.040, 0.003, 0.020)), MAT["steel"])
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            s.add(cyl((x0 + sx * (w / 2 - 0.07), y, z0 + sz * (d / 2 - 0.07)),
+                      (0, 1, 0), 0.030, 0.008, n=10), MAT["chrome"])
+    s.add(box((x0, y, z0 - d / 2 + 0.035), (w - 0.16, 0.006, 0.014)), MAT["led_blue"])
 
 
 def vent_slots(s, c, size, n, axis="z"):
@@ -139,6 +164,12 @@ def add_tower(s, phase, led, press=0.0):
     s.add(box((-0.24, 0.98, 0.05), (0.48, 0.13, 1.12)), MAT["alu_dark"])
     s.add(box((-0.24, 0.908, 0.05), (0.44, 0.014, 1.04)), MAT["gold"])
 
+    for k in range(3):
+        z = -0.55 + k * 0.32
+        s.add(cable([(0.30, 0.42, z), (0.50, 0.64, z + 0.10),
+                     (0.44, 1.06, z - 0.05), (0.06, 1.34, z - 0.24)],
+                    r=0.023, n=6), MAT["rubber"])
+    s.add(box((0.556, 1.02, -0.855), (0.012, 1.84, 0.014)), MAT["led_blue"])
     s.add(plane((0.545, 1.02, 0), (0, 1, 0), (0, 0, 1), 1.72, 1.96), MAT["glass"])
     for z in (-0.87, 0.87):
         s.add(box((0.552, 1.02, z), (0.03, 1.96, 0.05)), MAT["alu_dark"])
@@ -184,6 +215,15 @@ def scene_psu(u, t):
             s.add(cyl((x, y, 0.725), (0, 0, 1), 0.035, 0.014, n=10), MAT["chrome"])
     for i in range(6):
         s.add(box((-0.55 + i * 0.22, 0.46, -0.732), (0.13, 0.34, 0.012)), MAT["alu_dark"])
+    # pelat label + koil tembaga + kapasitor pada panel depan
+    s.add(box((-0.28, 0.44, 0.732), (0.74, 0.40, 0.008)), MAT["case2"])
+    for i in range(6):
+        s.add(box((-0.56 + i * 0.11, 0.52 + 0.035 * (i % 2), 0.739),
+                  (0.072, 0.007, 0.004)), MAT["silk"])
+    s.add(annulus((0.44, 0.47, 0.739), (0, 0, 1), 0.12, 0.20, n=20), MAT["copper"])
+    s.add(disc((0.44, 0.47, 0.741), (0, 0, 1), 0.11, n=20), MAT["black"])
+    s.add(cyl((-0.45, 0.30, 0.741), (0, 0, 1), 0.075, 0.014, n=14), MAT["alu_dark"])
+    s.add(disc((-0.45, 0.30, 0.750), (0, 0, 1), 0.055, n=14), MAT["alu"])
 
     for k in range(3):
         z = -0.30 + k * 0.28
@@ -209,6 +249,7 @@ def scene_cpu(u, t):
     for i in range(14):
         s.add(box((-0.90 + i * 0.15, 0.058, -0.88), (0.012, 0.006, 0.72)), MAT["trace"])
         s.add(box((0.62, 0.058, -0.84 + i * 0.15), (0.34, 0.006, 0.012)), MAT["trace"])
+    pcb_art(s, 0, 0, 2.05, 2.05, 0.064, seed=1)
 
     s.add(box((0, 0.105, 0), (1.52, 0.10, 1.52)), MAT["plastic"])
     s.add(box((0, 0.158, 0), (1.26, 0.008, 1.26)), MAT["pcb2"])
@@ -255,6 +296,7 @@ def scene_post(u, t):
         s.add(box((-1.24 + i * 0.24, 0.083, -1.02), (0.012, 0.006, 0.78)), MAT["trace"])
     for i in range(8):
         s.add(box((-0.30, 0.083, -1.00 + i * 0.24), (1.90, 0.006, 0.012)), MAT["trace"])
+    pcb_art(s, 0, 0, 2.75, 2.35, 0.089, seed=2)
 
     s.add(box((-0.42, 0.22, -0.62), (0.86, 0.38, 0.86)), MAT["alu_dark"])
     for i in range(9):
@@ -296,6 +338,7 @@ def scene_ram(u, t):
         s.add(box((-1.00, 0.083, -0.58 + i * 0.18), (1.55, 0.006, 0.012)), MAT["trace"])
     for i in range(4):
         s.add(box((0.20 + i * 0.28, 0.083, 0.62), (0.012, 0.006, 0.60)), MAT["trace"])
+    pcb_art(s, 0, 0, 2.45, 1.60, 0.089, seed=3)
 
     s.add(box((-0.62, 0.12, -0.12), (1.48, 0.045, 0.44)), MAT["pcb2"])
     s.add(box((-1.40, 0.12, -0.12), (0.16, 0.048, 0.44)), MAT["gold"])
