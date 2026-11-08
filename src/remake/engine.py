@@ -26,8 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / "build"
 OUT = ROOT / "output"
 VO_DIR = ROOT / "assets" / "vo"
-FINAL = OUT / "KlikTahu_TombolPower_3D.mp4"
-SS = 1.15
+FINAL = OUT / "KlikTahu_TombolPower_4K_60fps.mp4"
+SS = 1.0
 VO_NAMES = [s["id"] + ".mp3" for s in S.SEGMENTS]
 
 
@@ -114,7 +114,7 @@ def render_frame(t, tl, total):
         A.captions(d, entry["words"], idx, window, accent, fade)
     A.watermark(d, t)
     n = S.SEGMENTS.index(seg) + 1
-    A.txt(d, (60, S.H - 92), f"{n:02d} / 07  ·  KLIKTAHU", 24,
+    A.txt(d, (60, S.H / A.SC - 92), f"{n:02d} / 07  ·  KLIKTAHU", 24,
           A.rgba(A.C("muted"), 180), "SemiBold")
     return np.asarray(frame)
 
@@ -134,8 +134,8 @@ def render_video(tl, total, silent_mp4, fps, crf, preset):
     cmd = [AU.ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{S.W}x{S.H}", "-r", str(fps),
            "-i", "-", "-an", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
-           "-pix_fmt", "yuv420p", "-profile:v", "high", "-movflags", "+faststart",
-           str(silent_mp4)]
+           "-pix_fmt", "yuv420p", "-profile:v", "high", "-level:v", "5.2",
+           "-movflags", "+faststart", str(silent_mp4)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     n = int(total * fps)
     t0 = time.time()
@@ -155,8 +155,9 @@ def main():
     ap.add_argument("--stills", action="store_true")
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--fps", type=int, default=S.FPS)
-    ap.add_argument("--crf", type=int, default=19)
+    ap.add_argument("--crf", type=int, default=20)
     ap.add_argument("--preset", default="veryfast")
+    ap.add_argument("--only-video", action="store_true")
     args = ap.parse_args()
     if not args.stills and not args.render:
         args.stills = args.render = True
@@ -179,12 +180,13 @@ def main():
     BUILD.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
     wav, m4a = BUILD / "mix3d.wav", BUILD / "mix3d_master.m4a"
-    silent = BUILD / "video3d_silent.mp4"
-    print("[1/3] Audio: VO + SFX tersinkron ...")
-    print(f"  mix {AU.build_master(tl, paths, wav):.2f}s")
-    print("[2/3] Mastering -14 LUFS ...")
-    m = AU.normalize(wav, m4a)
-    print(f"  input {m.get('input_i')} LUFS")
+    silent = BUILD / "video4k_silent.mp4"
+    if not args.only_video or not m4a.exists():
+        print("[1/3] Audio: VO + SFX tersinkron ...")
+        print(f"  mix {AU.build_master(tl, paths, wav):.2f}s")
+        print("[2/3] Mastering -14 LUFS ...")
+        m = AU.normalize(wav, m4a)
+        print(f"  input {m.get('input_i')} LUFS")
     print("[3/3] Render 3D + encode ...")
     render_video(tl, total, silent, args.fps, args.crf, args.preset)
     subprocess.run([AU.ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",

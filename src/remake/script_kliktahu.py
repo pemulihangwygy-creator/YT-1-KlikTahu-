@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-W, H = 1080, 1920
+W, H = 2160, 3840
 FPS = 60
 
 BRAND = "KlikTahu!"

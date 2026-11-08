@@ -43,14 +43,55 @@ _BOX_FACES = ((4, 5, 6, 7), (1, 0, 3, 2), (5, 1, 2, 6),
               (0, 4, 7, 3), (7, 6, 2, 3), (0, 1, 5, 4))
 
 
-def box(c, s, rot=(0, 0, 0)):
+def _plain_box(c, s, rot):
     hx, hy, hz = np.asarray(s, np.float32) / 2
     v = np.array([[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz],
                   [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]], np.float32)
     return transform([v[list(i)] for i in _BOX_FACES], rot, c)
 
 
-def cyl(c, a, r, length, n=12, caps=True, phase=0.0):
+def box(c, s, rot=(0, 0, 0), bevel=0.016):
+    """Box dengan chamfer: 6 muka + 12 strip tepi + 8 sudut.
+
+    Strip tepi punya normal diagonal -> menangkap cahaya jadi highlight logam.
+    """
+    h = np.asarray(s, np.float32) / 2
+    if float(h.min()) < 0.028:
+        return _plain_box(c, s, rot)
+    b = float(min(bevel, h.min() * 0.40))
+    if b < 1e-5:
+        return _plain_box(c, s, rot)
+    hi = h - b
+    faces = []
+    for ax in range(3):
+        o1, o2 = [i for i in range(3) if i != ax]
+        for sg in (-1, 1):
+            pts = []
+            for u, v in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                q = np.zeros(3, np.float32)
+                q[ax], q[o1], q[o2] = sg * h[ax], u * hi[o1], v * hi[o2]
+                pts.append(q)
+            faces.append(np.asarray(pts, np.float32))
+    for i, j in ((0, 1), (1, 2), (2, 0)):
+        k = 3 - i - j
+        for si in (-1, 1):
+            for sj in (-1, 1):
+                p1 = np.zeros(3, np.float32); p1[i], p1[j], p1[k] = si * hi[i], sj * h[j], -hi[k]
+                p2 = np.zeros(3, np.float32); p2[i], p2[j], p2[k] = si * h[i], sj * hi[j], -hi[k]
+                p3 = p2.copy(); p3[k] = hi[k]
+                p4 = p1.copy(); p4[k] = hi[k]
+                faces.append(np.asarray([p1, p2, p3, p4], np.float32))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for sz in (-1, 1):
+                faces.append(np.asarray([
+                    [sx * hi[0], sy * hi[1], sz * h[2]],
+                    [sx * hi[0], sy * h[1], sz * hi[2]],
+                    [sx * h[0], sy * hi[1], sz * hi[2]]], np.float32))
+    return transform(faces, rot, c)
+
+
+def cyl(c, a, r, length, n=20, caps=True, phase=0.0):
     axis = norm(a)
     ref = np.array([0, 1, 0], np.float32) if abs(axis[1]) < 0.9 else np.array([1, 0, 0], np.float32)
     u = norm(np.cross(axis, ref))
@@ -67,7 +108,7 @@ def cyl(c, a, r, length, n=12, caps=True, phase=0.0):
     return out
 
 
-def annulus(c, a, r0, r1, n=14, phase=0.0):
+def annulus(c, a, r0, r1, n=24, phase=0.0):
     axis = norm(a)
     ref = np.array([0, 1, 0], np.float32) if abs(axis[1]) < 0.9 else np.array([1, 0, 0], np.float32)
     u = norm(np.cross(axis, ref))
@@ -80,7 +121,7 @@ def annulus(c, a, r0, r1, n=14, phase=0.0):
             for i in range(n)]
 
 
-def disc(c, a, r, n=16, phase=0.0):
+def disc(c, a, r, n=24, phase=0.0):
     axis = norm(a)
     ref = np.array([0, 1, 0], np.float32) if abs(axis[1]) < 0.9 else np.array([1, 0, 0], np.float32)
     u = norm(np.cross(axis, ref))

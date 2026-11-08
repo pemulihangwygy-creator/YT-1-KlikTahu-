@@ -30,6 +30,9 @@ MAT = {
     "screen_on":M((38, 116, 202), 0.15, 50, emissive=0.58),
     "window":   M((128, 196, 250), 0.10, 50, emissive=0.64),
     "white":    M((236, 244, 255), 0.20, 30, emissive=0.38),
+    "chrome":   M((186, 198, 214), 0.95, 62, edge=0.20),
+    "copper":   M((190, 118, 66), 0.88, 42),
+    "chip":     M((26, 32, 38), 0.30, 26),
 }
 ACCENT = {"cyan": (70, 208, 244), "yellow": (255, 199, 32), "green": (58, 222, 142),
           "blue": (70, 138, 255), "amber": (255, 166, 56)}
@@ -54,10 +57,31 @@ def smooth(x):
 
 
 def studio(s, cx=0.0, cz=0.0, rx=1.8, rz=1.4):
-    s.add(plane((0, -0.065, 0), (1, 0, 0), (0, 0, 1), 18, 18), MAT["floor"], pre=True)
-    pts = [[cx + rx * math.cos(i * 2 * math.pi / 20), -0.058,
-            cz + rz * math.sin(i * 2 * math.pi / 20)] for i in range(28)]
-    s.add([np.array(pts, np.float32)], MAT["shadow"], pre=True)
+    for scale, a in ((1.0, 0.16), (0.78, 0.17), (0.52, 0.18)):
+        pts = [[cx + rx * scale * math.cos(i * 2 * math.pi / 28), -0.058,
+                cz + rz * scale * math.sin(i * 2 * math.pi / 28)] for i in range(28)]
+        s.add([np.array(pts, np.float32)], M((4, 8, 18), alpha=a), pre=True)
+
+
+def detail_pcb(s, positions, y=0.09, r=0.055, h=0.14):
+    """Kapasitor + chip kecil di atas papan."""
+    for k, (x, z) in enumerate(positions):
+        if k % 3 == 2:
+            s.add(box((x, y + 0.035, z), (0.13, 0.07, 0.10)), MAT["chip"])
+            s.add(box((x, y + 0.072, z), (0.09, 0.004, 0.07)), MAT["steel"])
+        else:
+            s.add(cyl((x, y + h / 2, z), (0, 1, 0), r, h, n=12), MAT["alu_dark"])
+            s.add(cyl((x, y + h + 0.006, z), (0, 1, 0), r * 0.78, 0.012, n=12), MAT["chrome"])
+
+
+def vent_slots(s, c, size, n, axis="z"):
+    for i in range(n):
+        if axis == "z":
+            s.add(box((c[0] - size[0] / 2 + (i + 0.5) * size[0] / n, c[1], c[2]),
+                      (size[0] / n * 0.55, size[1], size[2])), MAT["black"])
+        else:
+            s.add(box((c[0], c[1], c[2] - size[2] / 2 + (i + 0.5) * size[2] / n),
+                      (size[0], size[1], size[2] / n * 0.55)), MAT["black"])
 
 
 def add_fan(s, c, a, r, phase, blades=7, blade=None, hub=None, ring=None):
@@ -67,8 +91,8 @@ def add_fan(s, c, a, r, phase, blades=7, blade=None, hub=None, ring=None):
     hm = hub or MAT["alu_dark"]
     rm = ring or MAT["steel"]
     s.add(fan_blades(c, a, r * 0.24, r * 0.90, blades, phase, skew=r * 0.17), bm, post=True)
-    s.add(cyl(c, a, r * 0.22, r * 0.11, n=11), hm, post=True)
-    s.add(annulus(c + a * (r * 0.06), a, r * 0.19, r * 0.235, n=11), rm, post=True)
+    s.add(cyl(c, a, r * 0.22, r * 0.11, n=18), hm, post=True)
+    s.add(annulus(c + a * (r * 0.06), a, r * 0.19, r * 0.235, n=18), rm, post=True)
     s.add(annulus(c, a, r * 0.94, r * 1.13, n=12), rm)
     s.add(disc(c - a * (r * 0.055), a, r * 0.94, n=12), MAT["black"])
 
@@ -154,6 +178,10 @@ def scene_psu(u, t):
     s.add(annulus((0, 0.924, 0), (0, 1, 0), 0.30, 0.325, n=16), MAT["steel"])
     s.add(annulus((0, 0.924, 0), (0, 1, 0), 0.155, 0.175, n=16), MAT["steel"])
     s.add(box((0, 0.46, -0.718), (1.30, 0.66, 0.02)), MAT["black"])
+    vent_slots(s, (0, 0.46, -0.732), (1.10, 0.44, 0.012), 9)
+    for x in (-0.72, 0.72):
+        for y in (0.14, 0.78):
+            s.add(cyl((x, y, 0.725), (0, 0, 1), 0.035, 0.014, n=10), MAT["chrome"])
     for i in range(6):
         s.add(box((-0.55 + i * 0.22, 0.46, -0.732), (0.13, 0.34, 0.012)), MAT["alu_dark"])
 
@@ -201,6 +229,9 @@ def scene_cpu(u, t):
         s.add(box((1.00 + i * 0.085, 0.075, -0.66), (0.045, 0.02, 0.34)), MAT["gold"])
     for x, z in [(-0.82, -0.78), (-0.82, 0.78), (0.82, -0.82), (0.82, 0.82)]:
         s.add(cyl((x, 0.16, z), (0, 1, 0), 0.10, 0.26, n=12), MAT["alu_dark"])
+    detail_pcb(s, [(0.82, 0.30), (0.82, 0.52), (-0.82, 0.30), (-0.82, 0.52),
+                   (0.30, -0.86), (0.52, -0.86), (-0.30, -0.86), (0.30, 0.86)], y=0.055)
+    s.add(cyl((-0.79, 0.20, 0.0), (0, 0, 1), 0.022, 1.58, n=10), MAT["chrome"])
     cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u), 0.98 - 0.34 * u,
                  5.20 - 0.60 * ease(u), fov=40)
     return s, cam
@@ -226,7 +257,9 @@ def scene_post(u, t):
         s.add(box((-0.30, 0.083, -1.00 + i * 0.24), (1.90, 0.006, 0.012)), MAT["trace"])
 
     s.add(box((-0.42, 0.22, -0.62), (0.86, 0.38, 0.86)), MAT["alu_dark"])
-    add_fan(s, (-0.42, 0.425, -0.62), (0, 1, 0), 0.31, t * 2.4, blades=7)
+    for i in range(9):
+        s.add(box((-0.80 + i * 0.095, 0.425, -0.62), (0.022, 0.05, 0.80)), MAT["chrome"])
+    add_fan(s, (-0.42, 0.455, -0.62), (0, 1, 0), 0.31, t * 2.4, blades=7)
     for i in range(4):
         s.add(box((0.38 + i * 0.17, 0.10, -0.30), (0.10, 0.05, 1.32)), MAT["black"])
         s.add(box((0.38 + i * 0.17, 0.42, -0.30), (0.085, 0.62, 1.20)), MAT["alu_dark"])
@@ -240,6 +273,11 @@ def scene_post(u, t):
     s.add(box((-0.48, 0.10, 0.62), (1.50, 0.02, 0.44)), MAT["gold"])
 
     s.add(box((1.22, 0.10, 0.92), (0.30, 0.16, 0.30)), MAT["black"])
+    s.add(box((-1.20, 0.11, 0.72), (0.20, 0.14, 0.56)), MAT["black"])
+    detail_pcb(s, [(-1.05, -0.92), (-0.85, -0.92), (1.18, -0.86), (1.18, -0.66),
+                   (1.18, 0.10), (1.18, 0.30)], y=0.085, r=0.045, h=0.11)
+    for i in range(6):
+        s.add(box((-0.90 + i * 0.30, 0.095, 1.02), (0.16, 0.03, 0.12)), MAT["alu"])
     for i in range(4):
         on = smooth((u - 0.12 - i * 0.16) / 0.14)
         s.add(box((1.02, 0.187, 0.62 + i * 0.20), (0.10, 0.012, 0.09)),
@@ -274,6 +312,11 @@ def scene_ram(u, t):
               led_mat(ACCENT["blue"], 0.30 + 0.4 * u))
         s.add(pins((x, 0.135 + drop, 0), (1, 0, 0), (0, 0, 1), 0.06, 1.20, 1, 16, 0.045),
               MAT["gold"])
+        for j in range(4):
+            s.add(box((x + 0.05, 0.45 + drop, -0.42 + j * 0.28),
+                      (0.012, 0.42, 0.20)), MAT["chip"])
+    s.add(cyl((-0.05, 0.155, -0.12), (0, 1, 0), 0.045, 0.018, n=10), MAT["chrome"])
+    detail_pcb(s, [(0.95, -0.62), (0.95, 0.62), (-1.12, 0.62)], y=0.085, r=0.04, h=0.09)
     cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u), 0.68 - 0.22 * u,
                  7.80 - 0.85 * ease(u), fov=40)
     return s, cam
@@ -291,6 +334,11 @@ def scene_gpu(u, t):
     s.add(box((0, 0.705, 0.48), (1.55, 0.045, 0.24)), MAT["gold"])
     s.add(box((0, 1.335, 0.48), (2.55, 0.035, 0.30)), MAT["alu_dark"])
     s.add(box((1.24, 1.02, 0.48), (0.06, 0.56, 0.34)), MAT["steel"])
+    for i in range(12):
+        s.add(box((-1.15 + i * 0.21, 1.35, 0.34), (0.018, 0.028, 0.24)), MAT["chrome"])
+    s.add(box((-1.30, 1.02, 0.34), (0.05, 0.52, 0.30)), MAT["chrome"])
+    for y in (0.86, 1.18):
+        s.add(cyl((-1.335, y, 0.34), (1, 0, 0), 0.032, 0.012, n=10), MAT["copper"])
     cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u, 0.14 - 0.05 * u,
                  7.60 - 0.90 * ease(u), fov=42)
     return s, cam
@@ -314,6 +362,7 @@ BUILDERS = {
 }
 
 
-def build(name, u, t, W=1080, H=1920, ss=1.5):
+def build(name, u, t, W=1080, H=1920, ss=1.0):
+    import zrender
     s, cam = BUILDERS[name](clamp(u), t)
-    return render(s, cam, W, H, ss)
+    return zrender.render(s, cam, W, H, ss)
