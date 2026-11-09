@@ -18,6 +18,7 @@ import geom3d as G
 import ssao
 
 USE_SSAO = True          # SSAO Numba (normal rekonstruksi + 16 sampel hemisfer)
+ENV_N = 64               # resolusi matcap studio (prosedural, bukan gambar)
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "remake" / "raster.c"
@@ -30,13 +31,47 @@ _LIB = None
 _BG = {}
 
 
+def _make_env(n=ENV_N):
+    """Matcap studio prosedural: langit, lantai, 3 softbox, rim hangat.
+
+    Dihitung sekali dari rumus (bukan aset gambar), dipakai sebagai pantulan
+    image-based lighting untuk permukaan logam di rasterizer C.
+    """
+    x = (np.arange(n, dtype=np.float32) + 0.5) / n * 2 - 1
+    y = 1 - (np.arange(n, dtype=np.float32) + 0.5) / n * 2
+    NX, NY = np.meshgrid(x, y)
+    NZ = np.sqrt(np.clip(1 - NX * NX - NY * NY, 0, 1))
+    up = np.clip(NY * 0.5 + 0.5, 0, 1)
+    env = np.stack([0.045 + 0.145 * up + 0.055 * NZ,
+                    0.075 + 0.205 * up + 0.075 * NZ,
+                    0.125 + 0.320 * up + 0.105 * NZ], axis=-1)
+
+    def soft(cx, cy, sx, sy, power=2.0):
+        d = ((NX - cx) / sx) ** 2 + ((NY - cy) / sy) ** 2
+        return np.exp(-np.clip(d ** power, 0, 60))
+
+    key = soft(-0.40, 0.56, 0.30, 0.44)
+    fill = soft(0.56, 0.16, 0.24, 0.60)
+    strip = soft(0.02, -0.58, 0.78, 0.11)
+    rim = soft(0.78, 0.62, 0.20, 0.30)
+    env += key[..., None] * np.array([1.00, 1.04, 1.12], np.float32) * 0.92
+    env += fill[..., None] * np.array([1.10, 0.90, 0.70], np.float32) * 0.42
+    env += strip[..., None] * np.array([0.55, 0.92, 1.18], np.float32) * 0.30
+    env += rim[..., None] * np.array([1.12, 0.82, 0.58], np.float32) * 0.26
+    env *= 1.0 - 0.42 * np.clip((-NY - 0.45) / 0.55, 0, 1)[..., None]
+    return np.ascontiguousarray(np.clip(env, 0, 1.25), dtype=np.float32)
+
+
+ENV = _make_env()
+
+
 def _lib():
     if not LIB.exists():
         LIB.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["gcc", "-O3", "-march=native", "-ffast-math", "-shared", "-fPIC",
                         "-o", str(LIB), str(SRC), "-lm"], check=True)
     lib = ctypes.CDLL(str(LIB))
-    lib.raster.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int] + [ctypes.c_void_p] * 12
+    lib.raster.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int] + [ctypes.c_void_p] * 13
     lib.raster.restype = None
     lib.post.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
     lib.post.restype = None
@@ -189,7 +224,7 @@ def build_triangles(scene, cam, RW, RH):
         return np.ascontiguousarray(x, dtype=dt)
     return n, (ct(vx, np.float32), ct(vy, np.float32), ct(viz, np.float32),
                ct(vc, np.float32), ct(vn, np.float32), ct(vp, np.float32),
-               va, vb, pm, ct(lit, np.float32))
+               va, vb, pm, ct(lit, np.float32), ENV)
 
 
 def render(scene, cam, W, H, ss=1.0, zbuf=None):
@@ -203,7 +238,14 @@ def render(scene, cam, W, H, ss=1.0, zbuf=None):
     if key not in _BG:
         t = np.linspace(0, 1, RH, dtype=np.float32)[:, None, None]
         bg = scene.top[None, None, :] * (1 - t) + scene.bottom[None, None, :] * t
-        _BG[key] = np.ascontiguousarray(np.repeat(bg, RW, axis=1).astype(np.uint8))
+        # Penumbra area-light dibakar SEKALI ke latar: gratis per frame,
+        # jauh lebih murah daripada 14 poligon bayangan transparan.
+        yy = np.linspace(0, 1, RH, dtype=np.float32)[:, None]
+        xx = np.linspace(0, 1, RW, dtype=np.float32)[None, :]
+        d = ((xx - 0.50) / 0.36) ** 2 + ((yy - 0.80) / 0.115) ** 2
+        shade = (1.0 - 0.40 * np.exp(-np.clip(d, 0, 25)))[..., None]
+        _BG[key] = np.ascontiguousarray(
+            np.clip(bg * shade, 0, 255).astype(np.uint8))
     rgb = _BG[key].copy()
     if zbuf is None or zbuf.size != RW * RH:
         zbuf = np.zeros(RW * RH, np.float32)
@@ -212,11 +254,11 @@ def render(scene, cam, W, H, ss=1.0, zbuf=None):
 
     n, tri = build_triangles(scene, cam, RW, RH)
     if n:
-        vx, vy, viz, vc, vn, vp, va, vb, pm, lit = tri
+        vx, vy, viz, vc, vn, vp, va, vb, pm, lit, env = tri
         _LIB.raster(RW, RH, n, vx.ctypes.data, vy.ctypes.data, viz.ctypes.data,
                     vc.ctypes.data, vn.ctypes.data, vp.ctypes.data,
                     va.ctypes.data, vb.ctypes.data, pm.ctypes.data, lit.ctypes.data,
-                    zbuf.ctypes.data, rgb.ctypes.data)
+                    env.ctypes.data, zbuf.ctypes.data, rgb.ctypes.data)
     ao_map = None
     if USE_SSAO:
         ao_map = ssao.compute(zbuf, RW, RH, cam.fov)

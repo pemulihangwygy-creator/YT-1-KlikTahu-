@@ -32,7 +32,7 @@ void raster(int W, int H, int n,
             const float *vx, const float *vy, const float *viz,
             const float *vc, const float *vn, const float *vp,
             const unsigned char *va, const unsigned char *vb,
-            const float *pm, const float *lit,
+            const float *pm, const float *lit, const float *env,
             float *zbuf, unsigned char *rgb)
 {
     init_tbl();
@@ -85,6 +85,7 @@ void raster(int W, int H, int n,
         int ipat = (int)(pm[3 * t + 2] + 0.5f);
         int lut = shine < 20.0f ? 0 : (shine < 44.0f ? 1 : 2);
         int metallic = metal > 0.02f;
+        int ibl = metal > 0.55f;
         int enh = metallic || ipat;
         float alpha = (float)va[t] / 255.0f;
         int blend = vb[t];
@@ -163,6 +164,7 @@ void raster(int W, int H, int n,
                     int c = idx * 3;
                     float tex = 1.0f;
                     float add = 0.0f;
+                    float envr = 0.0f, envg = 0.0f, envb = 0.0f;
                     float invz = 1.0f / iz;
                     if (ipat) {
                         float wx = WX * invz, wy = WY * invz, wz = WZ * invz;
@@ -182,20 +184,39 @@ void raster(int W, int H, int n,
                     }
                     if (metallic) {
                         float nx = NX * invz, ny = NY * invz, nz = NZ * invz;
-                        float s1 = (nx * h1x + ny * h1y + nz * h1z) * 1.12f;
-                        float s2 = (nx * h2x + ny * h2y + nz * h2z) * 1.12f;
+                        /* normalisasi Newton orde-1 (tanpa sqrt per piksel) */
+                        float l2 = nx * nx + ny * ny + nz * nz;
+                        float il = 1.5f - 0.5f * l2;
+                        nx *= il; ny *= il; nz *= il;
+                        float s1 = nx * h1x + ny * h1y + nz * h1z;
+                        float s2 = nx * h2x + ny * h2y + nz * h2z;
                         s1 = s1 > 1.0f ? 1.0f : (s1 > 0.0f ? s1 : 0.0f);
                         s2 = s2 > 1.0f ? 1.0f : (s2 > 0.0f ? s2 : 0.0f);
                         float sp1 = SLUT[lut][(int)(s1 * 255.0f)];
                         float sp2 = SLUT[lut][(int)(s2 * 255.0f)];
-                        float df = -nz * 1.12f;
-                        df = df < 0.0f ? 0.0f : (df > 1.0f ? 1.0f : df);
-                        float fres = metal * 0.20f * (1.0f - df) * (1.0f - df);
-                        add = metal * (0.95f * sp1 + 0.42f * sp2) + fres;
+                        float ndv = -nz;
+                        ndv = ndv < 0.0f ? 0.0f : (ndv > 1.0f ? 1.0f : ndv);
+                        float g = 1.0f - ndv;
+                        float g2 = g * g, g4 = g2 * g2, g5 = g4 * g;
+                        float fres = metal * 0.20f * g2;   /* Schlick, orde 5 */
+                        add = metal * (0.88f * sp1 + 0.36f * sp2) + fres;
+                        add *= 0.78f + 0.30f * tex;        /* goresan logam */
+                        if (ibl) {
+                            /* IBL matcap: pantulan studio dari normal view-space */
+                            int ex = (int)((nx * 0.5f + 0.5f) * 63.0f);
+                            int ey = (int)((0.5f - ny * 0.5f) * 63.0f);
+                            ex = ex < 0 ? 0 : (ex > 63 ? 63 : ex);
+                            ey = ey < 0 ? 0 : (ey > 63 ? 63 : ey);
+                            const float *e = env + (ey * 64 + ex) * 3;
+                            float ek = metal * (0.24f + 0.78f * g5 + 0.24f * g);
+                            envr = e[0] * rr * ek;
+                            envg = e[1] * gg * ek;
+                            envb = e[2] * bb * ek;
+                        }
                     }
-                    float R = rr * tex + add * sr * 190.0f;
-                    float G = gg * tex + add * sg * 190.0f;
-                    float B = bb * tex + add * sb * 190.0f;
+                    float R = rr * tex + add * sr * 190.0f + envr;
+                    float G = gg * tex + add * sg * 190.0f + envg;
+                    float B = bb * tex + add * sb * 190.0f + envb;
                     R = R < 0.0f ? 0.0f : (R > 255.0f ? 255.0f : R);
                     G = G < 0.0f ? 0.0f : (G > 255.0f ? 255.0f : G);
                     B = B < 0.0f ? 0.0f : (B > 255.0f ? 255.0f : B);

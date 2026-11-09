@@ -42,13 +42,16 @@ MAT = {
     "cream":    M((214, 218, 208), 0.22, 22, emissive=0.12),
     "floor":    M((17, 24, 39), 0.14, 28),
     "grid":     M((38, 52, 76), 0.28, 26, emissive=0.06),
-    "wall":     M((9, 14, 27), 0.06, 18),
-    "wall2":    M((15, 23, 40), 0.06, 18),
+    "wall":     M((13, 20, 36), 0.06, 18),
+    "wall2":    M((19, 28, 47), 0.06, 18),
     "key":      M((36, 44, 58), 0.20, 22),
     "key_alt":  M((46, 68, 92), 0.26, 24),
     "key_hi":   M((226, 178, 40), 0.35, 30, emissive=0.22),
     "coffee":   M((48, 31, 22), 0.10, 20),
     "desk":     M((32, 42, 60), 0.30, 32),
+    "panel":    M((34, 49, 72), 0.05, 18, emissive=0.16),
+    "panel2":   M((58, 46, 42), 0.05, 18, emissive=0.12),
+    "port":     M((8, 11, 17), 0.10, 20),
 }
 ACCENT = {"cyan": (70, 208, 244), "yellow": (255, 199, 32), "green": (58, 222, 142),
           "blue": (70, 138, 255), "amber": (255, 166, 56)}
@@ -86,6 +89,12 @@ def beat(u, keys, t=0.0):
     return base + 0.014 * math.sin(t * 0.83 + 1.1) + 0.007 * math.sin(t * 0.37)
 
 
+def cine_fov(base, t, u=0.0):
+    """Dolly-zoom halus: fov bernapas mengikuti waktu, menyempit di akhir bab."""
+    return (base + 1.35 * math.sin(t * 0.31 + 0.7) + 0.45 * math.sin(t * 0.13)
+            - 0.9 * ease(u))
+
+
 def screw(s, c, axis, r=0.032):
     a = norm(axis)
     c = np.asarray(c, np.float32)
@@ -94,9 +103,10 @@ def screw(s, c, axis, r=0.032):
 
 
 def studio(s, cx=0.0, cz=0.0, rx=1.8, rz=1.4):
-    for scale, a in ((1.0, 0.16), (0.78, 0.17), (0.52, 0.18)):
-        pts = [[cx + rx * scale * math.cos(i * 2 * math.pi / 28), -0.058,
-                cz + rz * scale * math.sin(i * 2 * math.pi / 28)] for i in range(28)]
+    """Kontak gelap kecil; penumbra lebar dibakar di latar (lihat zrender._BG)."""
+    for scale, a in ((0.42, 0.11), (0.26, 0.13)):
+        pts = [[cx + rx * scale * math.cos(j * 2 * math.pi / 16), -0.076,
+                cz + rz * scale * math.sin(j * 2 * math.pi / 16)] for j in range(16)]
         s.add([np.array(pts, np.float32)], M((4, 8, 18), alpha=a), pre=True)
 
 
@@ -108,6 +118,11 @@ def environment(s, tint=(9, 14, 27)):
         s.add(plane((0, -0.087, i), (1, 0, 0), (0, 0, 1), 16, 0.013), MAT["grid"])
     s.add(plane((0, 3.8, -7.8), (1, 0, 0), (0, 1, 0), 26, 10), MAT["wall"])
     s.add(plane((0, 0.46, -7.76), (1, 0, 0), (0, 1, 0), 26, 0.92), MAT["wall2"])
+    for px, py, w, h, mat in ((-5.6, 2.9, 2.4, 3.6, MAT["panel"]),
+                              (5.2, 2.5, 1.5, 2.9, MAT["panel2"])):
+        s.add(plane((px, py, -7.72), (1, 0, 0), (0, 1, 0), w, h), mat)
+        s.add(plane((px, py - h / 2 - 0.05, -7.71), (1, 0, 0), (0, 1, 0),
+                    w * 1.04, 0.05), MAT["wall2"])
 
 
 def peripherals(s):
@@ -298,6 +313,20 @@ def add_tower(s, phase, led, press=0.0):
     for y in (0.045, 1.995):
         s.add(box((0.552, y, 0), (0.03, 0.05, 1.74)), MAT["alu_dark"])
 
+    # panel I/O atas: 4 port USB, 2 jack audio, sisir kabel (quad, murah)
+    for i in range(4):
+        x = -0.36 + i * 0.13
+        s.add(plane((x, 2.049, 0.30), (1, 0, 0), (0, 0, 1), 0.090, 0.042), MAT["port"])
+        s.add(plane((x, 2.050, 0.30), (1, 0, 0), (0, 0, 1), 0.062, 0.012), MAT["silver2"])
+    for i in range(2):
+        s.add(annulus((0.22 + i * 0.12, 2.051, 0.30), (0, 1, 0),
+                      0.018, 0.030, n=12), MAT["chrome"])
+    for z in (-0.46, -0.12, 0.22):
+        s.add(plane((0.42, 0.96, z), (0, 1, 0), (0, 0, 1), 0.14, 0.20), MAT["black"])
+        for j in range(3):
+            s.add(plane((0.423, 0.90 + j * 0.06, z), (0, 1, 0), (0, 0, 1),
+                        0.008, 0.020), MAT["alu_dark"])
+
     dy = -0.018 * press
     s.add(cyl((0.0, 2.056 + dy, 0.62), (0, 1, 0), 0.078, 0.032, n=12), MAT["alu"])
     s.add(annulus((0.0, 2.075 + dy, 0.62), (0, 1, 0), 0.052, 0.075, n=12),
@@ -319,7 +348,7 @@ def scene_case(u, t):
     cam = Camera((0.0, 1.03, -0.05),
                  0.96 + 0.16 * ease(u) + beat(u, YAW, t),
                  0.16 - 0.05 * u + beat(u, PITCH, t),
-                 6.55 - 0.75 * ease(u) + beat(u, DIST, t), fov=40)
+                 6.55 - 0.75 * ease(u) + beat(u, DIST, t), fov=cine_fov(40, t, u))
     return s, cam
 
 
@@ -381,7 +410,7 @@ def scene_psu(u, t):
               led_mat((255, 190, 60), smooth((u - 0.42) / 0.18)))
     cam = Camera((0.55, 0.52, 0), -0.38 + 0.72 * ease(u) + beat(u, YAW, t),
                  0.48 - 0.14 * u + beat(u, PITCH, t),
-                 7.10 - 0.80 * ease(u) + beat(u, DIST, t), fov=41)
+                 7.10 - 0.80 * ease(u) + beat(u, DIST, t), fov=cine_fov(41, t, u))
     return s, cam
 
 
@@ -438,7 +467,7 @@ def scene_cpu(u, t):
             screw(s, (x, 0.075, z), (0, 1, 0), 0.032)
     cam = Camera((0, 0.10, 0), 0.34 + 0.42 * ease(u) + beat(u, YAW, t),
                  0.98 - 0.34 * u + beat(u, PITCH, t),
-                 5.20 - 0.60 * ease(u) + beat(u, DIST, t), fov=40)
+                 5.20 - 0.60 * ease(u) + beat(u, DIST, t), fov=cine_fov(40, t, u))
     return s, cam
 
 
@@ -501,7 +530,7 @@ def scene_post(u, t):
             screw(s, (x, 0.095, z), (0, 1, 0), 0.030)
     cam = Camera((0.05, 0.30, 0), 0.48 + 0.48 * ease(u) + beat(u, YAW, t),
                  0.80 - 0.24 * u + beat(u, PITCH, t),
-                 6.35 - 0.70 * ease(u) + beat(u, DIST, t), fov=41)
+                 6.35 - 0.70 * ease(u) + beat(u, DIST, t), fov=cine_fov(41, t, u))
     return s, cam
 
 
@@ -550,9 +579,14 @@ def scene_ram(u, t):
     for x in (-1.10, 1.10):
         for z in (-0.68, 0.68):
             screw(s, (x, 0.09, z), (0, 1, 0), 0.028)
+    for i in range(6):
+        s.add(plane((-0.72 + i * 0.24, 0.29, 0.72), (1, 0, 0), (0, 0, 1),
+                    0.15, 0.10), MAT["chip"])
+        s.add(plane((-0.72 + i * 0.24, 0.291, 0.72), (1, 0, 0), (0, 0, 1),
+                    0.10, 0.010), MAT["silk"])
     cam = Camera((0.15, 0.34, 0), 0.26 + 0.32 * ease(u) + beat(u, YAW, t),
                  0.68 - 0.22 * u + beat(u, PITCH, t),
-                 7.80 - 0.85 * ease(u) + beat(u, DIST, t), fov=40)
+                 7.80 - 0.85 * ease(u) + beat(u, DIST, t), fov=cine_fov(40, t, u))
     return s, cam
 
 
@@ -594,7 +628,7 @@ def scene_gpu(u, t):
             screw(s, (x, y, 0.642), (0, 0, 1), 0.024)
     cam = Camera((0, 1.15, -0.30), 0.50 - 0.16 * u + beat(u, YAW, t),
                  0.14 - 0.05 * u + beat(u, PITCH, t),
-                 7.60 - 0.90 * ease(u) + beat(u, DIST, t), fov=42)
+                 7.60 - 0.90 * ease(u) + beat(u, DIST, t), fov=cine_fov(42, t, u))
     return s, cam
 
 
@@ -607,9 +641,9 @@ def scene_loop(u, t):
     add_tower(s, t * 2.6 + 0.25, led, 0.0)
     add_monitor(s, (-1.98, 1.24, -0.72), on=True, u=1.0, w=1.95, h=1.20, t=t)
     peripherals(s)
-    cam = Camera((0.0, 1.03, -0.05), 1.10 - 0.58 * ease(u) + beat(u, YAW, t),
-                 0.17 + 0.08 * u + beat(u, PITCH, t),
-                 6.30 + 0.60 * ease(u) + beat(u, DIST, t), fov=40)
+    cam = Camera((-0.38, 1.00, -0.08), 0.88 - 0.40 * ease(u) + beat(u, YAW, t),
+                 0.19 + 0.06 * u + beat(u, PITCH, t),
+                 7.35 + 0.45 * ease(u) + beat(u, DIST, t), fov=cine_fov(40, t, u))
     return s, cam
 
 
